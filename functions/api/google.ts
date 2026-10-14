@@ -4,11 +4,9 @@ const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_DRIVE_BASE = "https://www.googleapis.com/drive/v3";
 const SESSION_COOKIE = "gallivanter_session";
 
-// These should be set as Pages Environment Variables
-const CLIENT_ID = process.env.GOOGLE_CLIENT_ID || process.env.CF_PAGES_DEPLOYMENT_TOKEN || "";
-const CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || "";
-const REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || "https://gallivanter.jolly-rain-7712.pages.dev/api/google/callback";
-const FILE_NAME = process.env.GOOGLE_FILE_NAME || "gallivanter-workspace.json";
+// These can be set as Pages Environment Variables, or passed from the client
+const DEFAULT_REDIRECT_URI = "https://gallivanter.jolly-rain-7712.pages.dev/api/google/callback";
+const DEFAULT_FILE_NAME = "gallivanter-workspace.json";
 
 function buildAuthUrl(clientId: string, redirectUri: string, state: string): string {
   const params = new URLSearchParams({
@@ -236,8 +234,8 @@ export const GET = async (request: Request) => {
 
   // OAuth start
   if (path === "/api/google") {
-    const clientId = url.searchParams.get("client_id") || CLIENT_ID;
-    const clientSecret = url.searchParams.get("client_secret") || CLIENT_SECRET;
+    const clientId = url.searchParams.get("client_id") || "";
+    const clientSecret = url.searchParams.get("client_secret") || "";
 
     if (!clientId || !clientSecret) {
       return new Response(JSON.stringify({ error: "Missing client_id or client_secret" }), {
@@ -247,8 +245,8 @@ export const GET = async (request: Request) => {
     }
 
     const state = crypto.randomUUID();
-    const redirectUri = encodeURIComponent(REDIRECT_URI);
-    const authUrl = buildAuthUrl(clientId, REDIRECT_URI, state);
+    const redirectUri = encodeURIComponent(DEFAULT_REDIRECT_URI);
+    const authUrl = buildAuthUrl(clientId, DEFAULT_REDIRECT_URI, state);
 
     const cookie = serializeCookie(`${SESSION_COOKIE}_creds`, btoa(JSON.stringify({ clientId, clientSecret })), 300);
     const stateCookie = serializeCookie(`${SESSION_COOKIE}_state`, state, 300);
@@ -277,7 +275,7 @@ export const GET = async (request: Request) => {
       return new Response("Invalid credentials", { status: 400 });
     }
 
-    const token = await exchangeCode(creds.clientId, creds.clientSecret, code, REDIRECT_URI);
+    const token = await exchangeCode(creds.clientId, creds.clientSecret, code, DEFAULT_REDIRECT_URI);
     const sessionCookie = serializeCookie(SESSION_COOKIE, JSON.stringify(token), 60 * 60 * 24 * 30);
     const clearCookies = [
       serializeCookie(`${SESSION_COOKIE}_state`, "", 0),
@@ -320,7 +318,7 @@ export const GET = async (request: Request) => {
     }
 
     const valid = await getValidToken(token);
-    const fileId = await findWorkspaceFile(valid.access_token, FILE_NAME);
+    const fileId = await findWorkspaceFile(valid.access_token, DEFAULT_FILE_NAME);
 
     if (!fileId) {
       return new Response(JSON.stringify({ workspace: "", updatedAt: "" }), {
@@ -367,7 +365,7 @@ export const POST = async (request: Request) => {
     }
 
     const valid = await getValidToken(token);
-    const fileId = await writeWorkspace(valid.access_token, body.workspace, token.existingFileId ?? null, FILE_NAME);
+    const fileId = await writeWorkspace(valid.access_token, body.workspace, token.existingFileId ?? null, DEFAULT_FILE_NAME);
 
     // Update the session with the fileId
     const updatedToken = { ...token, existingFileId: fileId };
