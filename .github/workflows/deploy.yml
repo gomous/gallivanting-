@@ -27,14 +27,8 @@ jobs:
       - name: Build production assets
         run: npm run web:build
 
-<<<<<<< HEAD
-      - name: 🚀 Deploy to Cloudflare Pages
-        if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
-        uses: cloudflare/wrangler-action@v3
-=======
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/pages-action@v1
->>>>>>> e3b9235 (ci: secure pipeline - secrets via API, remove token-bearing bootstrap workflow)
+        uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
