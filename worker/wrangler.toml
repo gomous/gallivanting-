@@ -1,0 +1,17 @@
+# This file is no longer used. The API is now deployed as Cloudflare Pages Functions.
+# See: https://developers.cloudflare.com/pages/functions/
+# The functions are in the /functions/api/ directory of the main project.
+
+name = "gallivanter-api"
+main = "src/index.ts"
+account_id = "f0a40f67e87b4b3ca50d0680cc4f1ab8"
+compatibility_date = "2025-01-01"
+
+# To deploy the worker separately (if needed):
+# 1. Install wrangler: npm install -g wrangler
+# 2. Set secrets: wrangler secret put CLIENT_ID, wrangler secret put CLIENT_SECRET
+# 3. Set vars: wrangler var set REDIRECT_URI=...
+# 4. Deploy: wrangler deploy
+
+# Note: For the recommended setup, use Cloudflare Pages Functions instead.
+# The worker is only kept for reference and as a fallback.

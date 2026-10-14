@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { initialLeads, initialTasks } from "./data";
-import { readLocalBackendCollection, writeLocalBackendCollection } from "./backend";
+import { useAuth } from "./cloudflare/AuthContext";
+import { SettingsDialog, useGoogleCreds } from "./cloudflare/SettingsDialog";
 import { CrmModuleWorkspace, CrmSystemWorkspace, type CrmModuleKey, type CrmRoute } from "./crmModules";
 import {
   industries,
@@ -135,22 +136,6 @@ zohoSegmentToNav.Potentials = "Deals";
 zohoSegmentToNav.Dashboards = "Analytics";
 zohoSegmentToNav.Events = "Meetings";
 
-const STORAGE_KEYS = {
-  leads: "gallivanting.leads.v1",
-  tasks: "gallivanting.tasks.v1",
-};
-
-function readStored<T>(key: string, fallback: T): T {
-  const backendValue = readLocalBackendCollection<T>(key, fallback);
-  if (backendValue !== fallback) return backendValue;
-  try {
-    const value = window.localStorage.getItem(key);
-    return value ? (JSON.parse(value) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
 const emptyDraft: LeadDraft = {
   firstName: "",
   lastName: "",
@@ -222,8 +207,9 @@ function routeFromLocation(): { activeNav: NavKey; route: CrmRoute | null } {
 
 function App() {
   const initialRoute = useMemo(routeFromLocation, []);
-  const [leads, setLeads] = useState<Lead[]>(() => readStored(STORAGE_KEYS.leads, initialLeads));
-  const [tasks, setTasks] = useState<Task[]>(() => readStored(STORAGE_KEYS.tasks, initialTasks));
+  const { leads, tasks, setLeads, setTasks, authenticated, connectionStatus, syncStatus, hasCreds, login, logout, refreshFromDrive, saveNow } = useAuth();
+  const [showSettings, setShowSettings] = useState(false);
+
   const [activeNav, setActiveNav] = useState<NavKey>(initialRoute.activeNav);
   const [globalSearch, setGlobalSearch] = useState("");
   const [search, setSearch] = useState("");
@@ -261,14 +247,6 @@ function App() {
     window.addEventListener("popstate", syncRouteFromHistory);
     return () => window.removeEventListener("popstate", syncRouteFromHistory);
   }, []);
-
-  useEffect(() => {
-    writeLocalBackendCollection(STORAGE_KEYS.leads, leads);
-  }, [leads]);
-
-  useEffect(() => {
-    writeLocalBackendCollection(STORAGE_KEYS.tasks, tasks);
-  }, [tasks]);
 
   useEffect(() => {
     if (selectedLeadId && leads.length > 0 && !leads.some((lead) => lead.id === selectedLeadId)) {
@@ -446,8 +424,8 @@ function App() {
       if (payload.schema !== "gallivanting.workspace" || payload.version !== 1 || !Array.isArray(payload.leads) || !Array.isArray(payload.tasks)) {
         throw new Error("This file is not a Gallivanter workspace export.");
       }
-      setLeads(payload.leads);
-      setTasks(payload.tasks);
+      setLeads(() => payload.leads ?? []);
+      setTasks(() => payload.tasks ?? []);
       setSelectedLeadId(payload.leads[0]?.id ?? "");
       setWorkspaceMessage("Workspace imported and saved locally.");
     }).catch((error: unknown) => {
@@ -588,11 +566,18 @@ function App() {
             <span className="nav-icon">⇧</span>
             <span>Import workspace</span>
           </button>
+          <button className="nav-item" onClick={() => { setShowSettings(true); setSidebarOpen(false); }} type="button">
+            <span className="nav-icon">⚙</span>
+            <span>Settings</span>
+          </button>
           <input accept="application/json,.json" hidden onChange={handleImport} ref={importInputRef} type="file" />
         </nav>
 
         <div className="sidebar-footer">
-          <div className="sync-status">Local storage · this device</div>
+          <div className="sync-status">
+            <span className={`sync-dot ${authenticated ? "connected" : "disconnected"}`} />
+            {authenticated ? "Google Drive connected" : "Local only"}
+          </div>
         </div>
       </aside>
 
@@ -607,7 +592,19 @@ function App() {
             <div className="breadcrumbs"><span>Gallivanter</span><span className="slash">/</span><strong>{activeNav}</strong></div>
           </div>
           <div className="topbar-actions">
+            {authenticated ? (
+              <button className="icon-button" aria-label="Sync status" title={`Sync: ${syncStatus}`} onClick={refreshFromDrive} type="button">
+                <span className={syncStatus === "syncing" ? "syncing" : syncStatus === "synced" ? "synced" : syncStatus === "error" ? "error" : ""}>
+                  {syncStatus === "syncing" ? "↻" : syncStatus === "synced" ? "✓" : syncStatus === "error" ? "!" : "◌"}
+                </span>
+              </button>
+            ) : (
+              <button className="icon-button" aria-label="Connect to Google Drive" title="Connect to Google Drive" onClick={login} type="button">
+                <span>⇄</span>
+              </button>
+            )}
              <label className="global-search"><span>⌕</span><input aria-label="Search records" onChange={(event) => setGlobalSearch(event.target.value)} onKeyDown={handleGlobalSearchKey} placeholder="Search records" value={globalSearch} /></label>
+             <button className="icon-button" aria-label="Settings" title="Settings" onClick={() => setShowSettings(true)} type="button"><span>⚙</span></button>
           </div>
         </header>
 
@@ -703,6 +700,7 @@ function App() {
          {workspaceMessage ? <div className="workspace-toast" role="status"><span>✓</span>{workspaceMessage}<button aria-label="Dismiss message" onClick={() => setWorkspaceMessage("")} type="button">×</button></div> : null}
       {showCreate ? <CreateLeadModal draft={draft} editing={Boolean(editingLeadId)} error={formError} onChange={updateDraft} onClose={() => { setShowCreate(false); setEditingLeadId(null); setFormError(""); }} onSubmit={handleCreate} /> : null}
       {showTaskCreate ? <CreateTaskModal draft={taskDraft} error={taskFormError} onChange={updateTaskDraft} onClose={() => { setShowTaskCreate(false); setTaskFormError(""); }} onSubmit={handleCreateTask} /> : null}
+      {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
     </div>
   );
 }

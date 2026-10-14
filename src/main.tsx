@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { CrmProvider } from "./crm/store";
+import { AuthProvider } from "./cloudflare/AuthContext";
 import "./styles.css";
 
 // Register the service worker for PWA offline support
@@ -16,8 +17,10 @@ if ("serviceWorker" in navigator) {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <CrmProvider>
-      <App />
-    </CrmProvider>
+    <AuthProvider>
+      <CrmProvider>
+        <App />
+      </CrmProvider>
+    </AuthProvider>
   </StrictMode>,
 );
