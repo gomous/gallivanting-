@@ -245,6 +245,7 @@ function App() {
   const [editingLeadId, setEditingLeadId] = useState<string | null>(null);
   const [workspaceMessage, setWorkspaceMessage] = useState("");
   const [route, setRoute] = useState<CrmRoute | null>(initialRoute.route);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -520,6 +521,7 @@ function App() {
       const count = item.label === "Leads" ? leads.length : item.label === "Tasks" ? tasks.filter((task) => task.status !== "Completed").length : item.count;
       return <button className={`nav-item ${activeNav === item.label ? "active" : ""}`} key={item.label} onClick={() => {
         setActiveNav(item.label);
+        setSidebarOpen(false);
         const module = item.label as CrmModuleKey;
         const segment = zohoNavSegments[item.label];
         if (crmModuleKeys.includes(module) && segment) {
@@ -549,12 +551,14 @@ function App() {
     if (leadId !== undefined) setSelectedLeadId(leadId);
     setActiveNav("Leads");
     setRoute(null);
+    setSidebarOpen(false);
     window.history.pushState({}, "", `/crm/${localZohoOrg}/tab/Leads`);
   }
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+      <div className={`mobile-sidebar-backdrop ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+      <aside className={`sidebar ${sidebarOpen ? "mobile-open" : ""}`}>
         <div className="brand-lockup">
           <div className="brand-mark">G</div>
           <div>
@@ -576,11 +580,11 @@ function App() {
         <div className="sidebar-label secondary-label">Tools</div>
         {renderNavItems(toolNav, "Tools navigation")}
         <nav className="primary-nav" aria-label="Backup navigation">
-          <button className="nav-item" onClick={handleExport} type="button">
+          <button className="nav-item" onClick={() => { handleExport(); setSidebarOpen(false); }} type="button">
             <span className="nav-icon">⇩</span>
             <span>Backup workspace</span>
           </button>
-          <button className="nav-item" onClick={() => importInputRef.current?.click()} type="button">
+          <button className="nav-item" onClick={() => { importInputRef.current?.click(); setSidebarOpen(false); }} type="button">
             <span className="nav-icon">⇧</span>
             <span>Import workspace</span>
           </button>
@@ -594,7 +598,14 @@ function App() {
 
       <main className="main-area">
         <header className="topbar">
-          <div className="breadcrumbs"><span>Gallivanter</span><span className="slash">/</span><strong>{activeNav}</strong></div>
+          <div className="topbar-left">
+            <button className="mobile-menu-button" aria-label="Toggle navigation" onClick={() => setSidebarOpen(true)} type="button">
+              <span />
+              <span />
+              <span />
+            </button>
+            <div className="breadcrumbs"><span>Gallivanter</span><span className="slash">/</span><strong>{activeNav}</strong></div>
+          </div>
           <div className="topbar-actions">
              <label className="global-search"><span>⌕</span><input aria-label="Search records" onChange={(event) => setGlobalSearch(event.target.value)} onKeyDown={handleGlobalSearchKey} placeholder="Search records" value={globalSearch} /></label>
           </div>

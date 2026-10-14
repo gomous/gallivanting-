@@ -179,168 +179,862 @@ body { background: #f7f8fa; font-family: "Lato", "Segoe UI", Arial, sans-serif; 
  .zoho-show-details { margin-top: 14px; padding: 9px 0; border: 0; color: #2f6edb; background: transparent; font-size: 10px; }.zoho-action-backdrop { position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; padding: 25px; background: rgba(28, 37, 51, .22); }.zoho-action-dialog { width: min(480px, 100%); padding: 20px; border: 1px solid #dfe3e8; border-radius: 7px; background: #fff; box-shadow: 0 16px 42px rgba(40, 48, 61, .22); }.zoho-action-dialog h2 { color: #253241; font-size: 18px; }.zoho-action-dialog p { margin-top: 5px; color: #89939e; font-size: 10px; }.zoho-action-dialog input, .zoho-action-dialog textarea { display: block; width: 100%; box-sizing: border-box; margin-top: 12px; padding: 10px; border: 1px solid #dfe3e8; border-radius: 4px; color: #3f4b59; font: inherit; font-size: 10px; }.zoho-action-dialog textarea { min-height: 86px; resize: vertical; }.zoho-action-dialog > div { display: flex; justify-content: flex-end; gap: 7px; margin-top: 16px; }.zoho-inline-notice { position: fixed; z-index: 31; right: 25px; bottom: 50px; display: flex; align-items: center; gap: 10px; max-width: 360px; padding: 10px 12px; border: 1px solid #cfe1f8; border-radius: 5px; color: #315f9e; background: #f2f7ff; box-shadow: 0 10px 24px rgba(40, 48, 61, .13); font-size: 10px; }.zoho-inline-notice button { border: 0; color: #6c8fba; background: transparent; font-size: 16px; }
 
 /* Mobile Responsive Styles */
+
+/* Mobile menu button (hamburger) */
+.mobile-menu-button {
+  display: none;
+  flex-direction: column;
+  width: 34px;
+  height: 30px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  gap: 5px;
+  margin-right: 8px;
+}
+.mobile-menu-button span {
+  display: block;
+  height: 3px;
+  width: 100%;
+  background: #2f6edb;
+  border-radius: 2px;
+  transition: 0.2s ease;
+}
+
+/* Sidebar backdrop for mobile slide-over */
+.mobile-sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 15;
+}
+.mobile-sidebar-backdrop.open {
+  display: block;
+}
+
+/* Topbar left container */
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 @media (max-width: 768px) {
-  /* Change layout from horizontal to vertical */
-  .app-shell {
-    flex-direction: column;
-  }
-  
-  /* Sidebar takes full width on mobile */
-  .sidebar {
-    width: 100%;
-    flex: 0 0 auto;
-    max-height: 70px;
+  .mobile-menu-button {
     display: flex;
-    flex-direction: row;
-    overflow-x: auto;
-    padding: 10px;
-    gap: 10px;
-    scrollbar-width: thin;
   }
-  
+
+  /* Sidebar becomes a slide-over drawer */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 280px;
+    max-width: 85vw;
+    transform: translateX(-100%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 20;
+    overflow-y: auto;
+    padding: 20px 12px 16px;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+  }
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+  .mobile-sidebar-backdrop.open {
+    display: block;
+  }
+
   .sidebar-label,
   .secondary-label {
-    display: none;
+    display: block;
   }
-  
+
   .nav-item {
-    height: auto;
-    min-width: 60px;
-    width: auto;
-    flex: 0 0 auto;
-    justify-content: center;
-    padding: 8px 6px;
-    position: relative;
+    height: 42px;
+    padding: 0 12px;
+    font-size: 13px;
   }
-  
-  .nav-icon {
-    font-size: 20px;
-  }
-  
-  .nav-item > span {
-    display: none;
-  }
-  
-  .nav-count {
-    position: absolute;
-    top: -4px;
-    right: -4px;
-  }
-  
+
   /* Main area takes remaining space */
   .main-area {
     flex: 1;
     width: 100%;
   }
-  
-  /* Adjust topbar padding */
+
+  /* Topbar: condense to one line */
   .topbar {
-    padding: 0 16px;
-    height: 60px;
+    height: 56px;
+    padding: 0 12px;
+    min-height: 56px;
   }
-  
-  /* Adjust content wrap */
+  .topbar-left {
+    flex: 1;
+    min-width: 0;
+  }
+  .breadcrumbs {
+    font-size: 11px;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .breadcrumbs strong {
+    font-size: 11px;
+  }
+
+  /* Condense topbar actions - hide less important ones */
+  .topbar-actions {
+    gap: 8px;
+  }
+  .global-search {
+    width: 150px;
+    height: 36px;
+  }
+  .icon-button {
+    display: none;
+  }
+
+  /* Content wrap tighter padding */
   .content-wrap {
-    padding: 20px 16px 24px;
+    padding: 20px 14px 24px;
   }
-  
-  /* Adjust table layout for mobile */
+
+  /* Page headings */
+  .page-heading {
+    margin-bottom: 18px;
+  }
+  .page-heading h1 {
+    font-size: 22px;
+    letter-spacing: -0.5px;
+  }
+  .page-heading p {
+    font-size: 11px;
+  }
+  .heading-actions {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  /* Metric grids become single column or 2 columns */
+  .metric-grid {
+    grid-template-columns: 1fr;
+  }
+  .task-summary-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .pipeline-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .outreach-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .report-metric-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Analytics grid */
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Focus list */
+  .focus-list {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  /* Table layout: table becomes full width, detail panel stacks below */
   .table-layout {
     grid-template-columns: 1fr;
   }
-  
-  /* Adjust pipeline board */
-  .pipeline-board {
-    grid-template-columns: 1fr;
-    min-height: auto;
+
+  /* Leads table: hide less important columns on mobile, convert to card layout */
+  .table-wrap table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
   }
-  
-  /* Adjust kanban grid */
-  .kanban-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
+  .table-wrap th,
+  .table-wrap td {
+    white-space: nowrap;
+    font-size: 12px;
+    padding: 10px 8px;
   }
-  
-  /* Adjust outreach board */
-  .outreach-board {
-    grid-template-columns: 1fr;
+  .table-wrap thead {
+    display: none;
   }
-  
-  /* Adjust metric grid */
-  .metric-grid {
-    grid-template-columns: repeat(2, 1fr);
+  .table-wrap tbody tr {
+    display: block;
+    border: 1px solid #e7e9f0;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    padding: 0;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
   }
-  
-  /* Adjust form grids */
-  .form-grid {
-    grid-template-columns: 1fr;
+  .table-wrap tbody tr td {
+    display: block;
+    padding: 8px;
+    border: 0;
+    border-bottom: 1px solid #f0f1f5;
+    color: #627187;
   }
-  
-  /* Adjust detail panel */
+  .table-wrap tbody tr td:last-child {
+    border-bottom: 0;
+  }
+  .table-wrap tbody tr td .check-cell,
+  .table-wrap tbody tr td:nth-child(1) {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* Better approach: use card layout for lead table */
+  .leads-card .table-wrap table {
+    display: block;
+  }
+  .leads-card .table-wrap thead {
+    display: none;
+  }
+  .leads-card .table-wrap tbody tr {
+    display: block;
+    border-radius: 10px;
+    margin-bottom: 10px;
+    padding: 12px;
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+  }
+  .leads-card .table-wrap tbody tr td {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid #f0f1f5;
+    font-size: 12px;
+  }
+  .leads-card .table-wrap tbody tr td:last-child {
+    border-bottom: 0;
+  }
+
+  /* Detail panel becomes a card below main content */
   .detail-panel {
-    max-height: none;
     border-left: none;
-    border-top: 1px solid var(--line);
-    margin-top: 20px;
+    border-top: 1px solid #e7e9f0;
+    margin-top: 16px;
+    max-height: none;
+    overflow: visible;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+    border-radius: 10px;
+    padding: 14px;
   }
-  
-  /* Adjust zoho detail grid */
+  .detail-topbar {
+    padding: 0 0 12px;
+    border-bottom: 1px solid #f0f1f5;
+  }
+  .detail-identity {
+    margin: 14px 0;
+  }
+  .detail-identity h2 {
+    font-size: 16px;
+  }
+  .detail-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+  }
+  .detail-tabs {
+    margin: 0 -14px 12px;
+    padding: 0 14px;
+    border-radius: 0;
+  }
+  .detail-tabs button {
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+  .detail-fields {
+    padding: 0;
+  }
+  .detail-field {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f1f5;
+    font-size: 12px;
+  }
+  .detail-field span {
+    color: #7d8794;
+    font-size: 10px;
+  }
+  .detail-field strong {
+    color: #26344c;
+    font-size: 12px;
+  }
+  .detail-section {
+    padding: 12px 0;
+  }
+  .section-title {
+    font-size: 11px;
+    padding: 0 0 8px;
+  }
+  .detail-status-row {
+    margin-bottom: 14px;
+  }
+  .note-composer {
+    display: flex;
+    gap: 6px;
+    flex-direction: column;
+  }
+  .note-composer textarea {
+    min-height: 80px;
+    font-size: 13px;
+    padding: 10px;
+    border-radius: 9px;
+  }
+  .note-submit {
+    align-self: flex-end;
+    height: 36px;
+    font-size: 11px;
+  }
+  .related-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  /* Timeline items */
+  .timeline-item {
+    padding: 14px 0;
+    font-size: 12px;
+  }
+  .timeline-item strong {
+    font-size: 12px;
+  }
+  .timeline-item small {
+    font-size: 9px;
+  }
+  .timeline-item p {
+    font-size: 11px;
+  }
+
+  /* Zoho detail grid */
   .zoho-detail-grid {
     grid-template-columns: 1fr;
   }
-  
-  /* Adjust research layout */
+  .zoho-contact-summary {
+    grid-template-columns: 2fr 1fr;
+  }
+  .zoho-next-action {
+    grid-column: span 2;
+  }
+  .zoho-related-lists {
+    grid-template-columns: 1fr;
+  }
+
+  /* Research layout */
   .research-layout,
   .report-grid {
     grid-template-columns: 1fr;
   }
-  
-  /* Adjust CRM module wrap */
+  .research-row {
+    grid-template-columns: 25px 30px 1fr;
+    gap: 10px;
+  }
+  .research-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+
+  /* CRM module wrap */
   .crm-module-wrap,
   .utility-wrap {
     width: 100%;
   }
-  
-  /* Make buttons more touch-friendly */
+
+  /* List toolbar on mobile: condense actions into a flex wrap */
+  .list-toolbar,
+  .crm-module-toolbar,
+  .tasks-toolbar,
+  .pipeline-toolbar,
+  .section-toolbar {
+    min-height: auto;
+    padding: 12px 14px;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .toolbar-actions {
+    flex-wrap: wrap;
+    width: 100%;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+  .search-box {
+    width: 100%;
+    margin-bottom: 8px;
+  }
+  .view-title {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .view-title strong {
+    font-size: 13px;
+  }
+
+  /* Reduce number of toolbar buttons on mobile - hide "More" and "Actions" */
+  .tasks-toolbar .toolbar-button:nth-child(6),
+  .tasks-toolbar .toolbar-button:nth-child(7) {
+    display: none;
+  }
+  .toolbar-actions .toolbar-button:nth-child(4),
+  .toolbar-actions .toolbar-button:nth-child(5) {
+    display: none;
+  }
+
+  /* Pipeline board: horizontal scroll with compact layout */
+  .pipeline-card {
+    overflow-x: auto;
+  }
+  .pipeline-board {
+    grid-template-columns: repeat(3, minmax(140px, 1fr));
+    min-width: 420px;
+    min-height: auto;
+    background: #f5f7fb;
+    border-radius: 10px;
+    padding: 5px;
+  }
+  .pipeline-column {
+    padding: 10px 6px;
+  }
+  .pipeline-heading {
+    margin: 0 2px 8px;
+  }
+  .pipeline-heading strong {
+    font-size: 10px;
+  }
+  .pipeline-heading small {
+    font-size: 8px;
+  }
+  .pipeline-heading b {
+    min-width: 18px;
+    padding: 1px 4px;
+    font-size: 8px;
+  }
+  .pipeline-stack {
+    gap: 6px;
+  }
+  .pipeline-lead-card {
+    padding: 8px;
+    border-radius: 8px;
+  }
+  .pipeline-card-link {
+    padding: 4px 0;
+  }
+  .pipeline-card-top {
+    gap: 6px;
+  }
+  .pipeline-card-top strong {
+    font-size: 10px;
+  }
+  .pipeline-card-top small {
+    font-size: 8px;
+  }
+  .pipeline-lead-card p {
+    font-size: 8px;
+    margin: 6px 0;
+  }
+  .pipeline-card-meta {
+    font-size: 8px;
+    gap: 4px;
+  }
+  .pipeline-lead-card select {
+    height: 24px;
+    margin-top: 6px;
+    font-size: 9px;
+    padding: 0 4px;
+  }
+  .pipeline-empty {
+    padding: 12px 4px;
+    font-size: 9px;
+  }
+
+  /* Kanban grid: horizontal scroll */
+  .kanban-grid {
+    grid-template-columns: repeat(3, minmax(140px, 1fr));
+    min-width: 420px;
+    min-height: auto;
+    background: #f5f7fb;
+    border-radius: 10px;
+    padding: 5px;
+  }
+  .kanban-column {
+    padding: 10px 6px;
+  }
+  .kanban-heading {
+    margin: 0 2px 8px;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .kanban-heading > div {
+    gap: 4px;
+  }
+  .kanban-heading strong {
+    font-size: 10px;
+  }
+  .kanban-heading span {
+    min-width: 18px;
+    padding: 1px 4px;
+    font-size: 8px;
+  }
+  .task-stack {
+    gap: 6px;
+  }
+  .task-card {
+    padding: 8px;
+    border-radius: 8px;
+  }
+  .task-card-top {
+    gap: 4px;
+  }
+  .task-priority {
+    font-size: 8px;
+  }
+  .task-card h3 {
+    font-size: 11px;
+  }
+  .task-card p {
+    font-size: 9px;
+    margin: 6px 0;
+  }
+  .task-card-footer {
+    font-size: 9px;
+    gap: 4px;
+  }
+  .task-card select {
+    height: 24px;
+    font-size: 9px;
+    padding: 0 4px;
+  }
+
+  /* CRM table: make it horizontally scrollable on mobile */
+  .crm-table {
+    font-size: 11px;
+  }
+  .crm-table th,
+  .crm-table td {
+    padding: 10px 8px;
+    font-size: 10px;
+  }
+  .crm-table tbody tr td {
+    white-space: nowrap;
+  }
+
+  /* CRM record panel: stacks below content */
+  .crm-record-panel {
+    position: static;
+    width: 100%;
+    margin-top: 16px;
+    max-height: none;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 14px;
+    top: 0;
+    bottom: 0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  }
+  .crm-record-panel .detail-tabs {
+    margin: 0 -14px 12px;
+    padding: 0 14px;
+  }
+  .crm-record-panel .detail-fields {
+    padding: 0;
+  }
+  .crm-record-panel .detail-field {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid #f0f1f5;
+    font-size: 12px;
+  }
+
+  /* Filter panel on mobile */
+  .filter-panel,
+  .crm-filter-panel {
+    padding: 12px 14px;
+  }
+  .filter-builder,
+  .crm-filter-builder {
+    grid-template-columns: 1fr;
+    min-height: auto;
+  }
+  .filter-nav {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid #eceef5;
+    padding-bottom: 0;
+    gap: 8px;
+    background: #fafaff;
+    height: auto;
+    min-height: 50px;
+  }
+  .filter-nav button {
+    flex: 0 0 auto;
+    height: auto;
+    min-width: 100px;
+    white-space: nowrap;
+  }
+  .filter-content {
+    padding: 12px;
+  }
+  .crm-filter-tabs {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #fafaff;
+    border-bottom: 1px solid #eceef5;
+  }
+  .crm-filter-tabs button {
+    flex: 0 0 auto;
+    height: auto;
+    min-width: 100px;
+    white-space: nowrap;
+  }
+  .crm-filter-options {
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+
+  /* Reports: grid and metrics */
+  .report-grid {
+    grid-template-columns: 1fr;
+  }
+  .bar-row > div:first-child {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  .source-list {
+    gap: 12px;
+  }
+
+  /* Analytics */
+  .analytics-grid {
+    grid-template-columns: 1fr;
+  }
+  .analytics-card {
+    font-size: 12px;
+  }
+
+  /* Zoho related lists */
+  .zoho-related-lists {
+    grid-template-columns: 1fr;
+  }
+  .zoho-contact-summary {
+    grid-template-columns: 1fr;
+  }
+
+  /* Workspace toast on mobile */
+  .workspace-toast {
+    position: fixed;
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    max-width: none;
+    max-width: calc(100vw - 24px);
+    padding: 10px 12px;
+    font-size: 11px;
+  }
+
+  /* Make all buttons touch-friendly */
   button,
   .toolbar-button,
   .primary-button,
-  .secondary-button {
-    min-height: 44px;
-    min-width: 44px;
-  }
-  
-  /* Adjust search boxes */
-  .search-box input,
-  .global-search input {
+  .secondary-button,
+  .small-primary,
+  .small-button,
+  .text-button,
+  .close-button {
     min-height: 40px;
-    font-size: 16px;
+    min-width: 40px;
+    padding: 0 12px;
+    font-size: 12px;
   }
-  
-  /* Adjust modals for mobile */
+  .nav-item {
+    min-height: 40px;
+  }
+  .small-primary,
+  .small-button {
+    min-height: 38px;
+    height: 38px;
+  }
+
+  /* Form fields */
+  .form-field input,
+  .form-field select {
+    height: 42px;
+    font-size: 14px;
+    padding: 0 12px;
+  }
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  /* Modal full screen on small screens */
   .create-modal {
     width: 100%;
     max-height: 100vh;
     border-radius: 0;
     margin: 0;
+    max-width: 100vw;
   }
-  
   .modal-backdrop {
     padding: 10px;
   }
-  
-  /* Adjust detail fields */
-  .detail-fields {
-    padding: 0;
+  .modal-header {
+    padding: 18px 20px;
   }
-  
-  /* Adjust timeline */
-  .timeline-item {
-    padding: 12px;
+  .modal-header h2 {
+    font-size: 19px;
+  }
+
+  /* Table overflow */
+  .table-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Hide checkboxes column on small screens - use swipe/action buttons instead */
+  .leads-card .table-wrap thead tr th:first-child,
+  .leads-card .table-wrap tbody tr td:first-child {
+    display: none;
+  }
+
+  /* Reduce padding on crm-module-body */
+  .crm-module-body {
+    min-height: 300px;
+  }
+
+  /* Reports library row */
+  .report-library-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 12px 0;
+  }
+  .report-library-row strong {
+    font-size: 12px;
+  }
+  .report-library-row span {
+    font-size: 10px;
+  }
+
+  /* Zoho action dialogs */
+  .zoho-action-backdrop {
+    padding: 16px;
+  }
+  .zoho-action-dialog {
+    width: 100%;
+    max-width: 100vw;
+    padding: 18px;
+    border-radius: 10px;
+  }
+  .zoho-action-dialog input,
+  .zoho-action-dialog textarea {
+    font-size: 13px;
+    padding: 10px;
+  }
+
+  /* Zoho inline notice */
+  .zoho-inline-notice {
+    right: 12px;
+    bottom: 12px;
+    left: 12px;
+    max-width: calc(100vw - 24px);
+    padding: 10px 12px;
+    font-size: 10px;
+  }
+
+  /* Focus list items */
+  .focus-list > div {
+    flex-direction: column;
+    gap: 6px;
+    text-align: center;
+  }
+  .focus-number {
+    margin: 0 auto 4px;
+  }
+  .focus-list strong {
+    font-size: 11px;
+  }
+  .focus-list p {
+    font-size: 9px;
   }
 }
 
-/* Gallivanter desktop refresh */
+/* Small phone screens */
+@media (max-width: 480px) {
+  .sidebar {
+    width: 90vw;
+    max-width: 90vw;
+  }
+
+  .topbar-actions .icon-button {
+    display: none;
+  }
+
+  /* Two column metrics become single column on very small screens */
+  .metric-grid,
+  .task-summary-row,
+  .pipeline-summary,
+  .report-metric-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .breadcrumb {
+    font-size: 10px;
+  }
+
+  .page-heading h1 {
+    font-size: 20px;
+  }
+
+  .nav-count {
+    font-size: 8px;
+    padding: 1px 4px;
+  }
+
+  /* Modal content padding */
+  .create-modal form {
+    padding: 0 16px;
+  }
+  .modal-header {
+    padding: 16px;
+  }
+  .modal-footer {
+    padding: 14px 0;
+  }
+
+  /* Toolbar buttons: show only primary + filter */
+  .toolbar-actions {
+    justify-content: flex-end;
+  }
+
+  /* Pipeline board: 2 columns on very small screens */
+  .pipeline-board,
+  .kanban-grid {
+    grid-template-columns: repeat(2, 1fr);
+    min-width: 280px;
+  }
+
+  /* Report cards */
+  .report-card {
+    padding: 14px;
+  }
+}
 :root { --ink: #172033; --muted: #718096; --line: #e4e9f1; --soft-line: #eef2f7; --panel: #fff; --brand: #5b5ce2; --brand-dark: #4647c9; --blue-soft: #eef2ff; --shadow: 0 18px 42px rgba(30, 41, 59, .08); }
 html { background: #f3f6fb; }
 body { color: var(--ink); background: #f3f6fb; font-family: Inter, ui-sans-serif, system-ui, -apple系统, BlinkMacSystemFont, "Segoe UI", sans-serif; }
@@ -370,3 +1064,80 @@ body, .app-shell, .main-area { background: #f6f8fc; }
 .brand-name { color: #172033 !important; }.brand-caption { color: #8b98aa !important; }.brand-mark { box-shadow: 0 8px 18px rgba(91, 92, 226, .2); }
 .sidebar-label { color: #93a0b2 !important; }.nav-item { color: #69788e !important; }.nav-item:hover { color: #4f50cf !important; background: #f5f7fc !important; }.nav-item.active { color: #4f50cf !important; background: #eef0ff !important; box-shadow: none !important; }.nav-count { color: #5556d9 !important; background: #e9eaff !important; }.sync-status { border-top-color: #e8edf4 !important; color: #8b98aa !important; }.sync-status::before { box-shadow: 0 0 0 4px rgba(70, 211, 154, .1); }
 .topbar { background: rgba(255, 255, 255, .92); }.content-wrap { background: transparent; }
+
+/* Mobile overrides that must win over all desktop theme rules */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    width: 280px !important;
+    max-width: 85vw !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    z-index: 20 !important;
+    overflow-y: auto !important;
+    padding: 20px 12px 16px !important;
+    box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15) !important;
+    border-right: 1px solid #e6ebf2 !important;
+  }
+  .sidebar.mobile-open {
+    transform: translateX(0) !important;
+  }
+  .mobile-sidebar-backdrop {
+    display: none !important;
+  }
+  .mobile-sidebar-backdrop.open {
+    display: block !important;
+  }
+  .sidebar-label,
+  .secondary-label {
+    display: block !important;
+  }
+  .nav-item {
+    min-height: 40px !important;
+    height: auto !important;
+  }
+  .nav-item > span:last-child {
+    display: inline !important;
+  }
+  .page-heading h1 {
+    font-size: 22px !important;
+  }
+  .content-wrap {
+    padding: 20px 14px 24px !important;
+  }
+  .topbar {
+    height: 56px !important;
+    padding: 0 12px !important;
+    min-height: 56px !important;
+  }
+  .top-bar-actions {
+    display: none !important;
+  }
+  .table-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .form-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .detail-panel,
+  .crm-record-panel {
+    border-left: none !important;
+    border-top: 1px solid #e7e9f0 !important;
+    margin-top: 16px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04) !important;
+    border-radius: 10px !important;
+  }
+  .modal-backdrop {
+    padding: 10px !important;
+  }
+  .create-modal {
+    width: 100% !important;
+    max-height: 100vh !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    max-width: 100vw !important;
+  }
+}
