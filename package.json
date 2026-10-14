@@ -1,0 +1,32 @@
+{
+  "name": "gallivanting",
+  "version": "0.1.0",
+  "description": "A focused desktop CRM workspace.",
+  "private": true,
+  "type": "module",
+  "main": "out/main/main.js",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
+    "web:dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
+    "web:build": "vite build",
+    "electron:dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "test": "node --experimental-strip-types --test src/crm/engine.test.ts src/backend/localBackend.test.ts src/moduleRecords.test.ts electron/persistence.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "5.2.0",
+    "electron": "44.7.0",
+    "electron-vite": "5.0.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.4",
+    "@types/react": "19.2.6",
+    "@types/react-dom": "19.2.3",
+    "typescript": "7.0.2",
+    "vite": "7.3.7"
+  }
+}
