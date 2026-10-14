@@ -1,5 +1,8 @@
 node_modules/
 out/
 dist/
+dist_new/
 zoho-capture-scripts/
 *.log
+deploy.zip
+secrets_payload.json

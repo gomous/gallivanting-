@@ -3,30 +3,38 @@ name: "Gallivanter PWA CI/CD"
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: 🛎️ Checkout repository
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: 🟢 Setup Node.js
-        uses: actions/setup-node@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: 'npm'
 
-      - name: 📦 Install dependencies
+      - name: Install dependencies
         run: npm ci
 
-      - name: 🏗️ Build Production Assets
+      - name: Build production assets
         run: npm run web:build
 
+<<<<<<< HEAD
       - name: 🚀 Deploy to Cloudflare Pages
         if: ${{ secrets.CLOUDFLARE_API_TOKEN != '' && secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
         uses: cloudflare/wrangler-action@v3
+=======
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/pages-action@v1
+>>>>>>> e3b9235 (ci: secure pipeline - secrets via API, remove token-bearing bootstrap workflow)
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
