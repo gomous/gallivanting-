@@ -593,11 +593,16 @@ function App() {
           </div>
           <div className="topbar-actions">
             {authenticated ? (
-              <button className="icon-button" aria-label="Sync status" title={`Sync: ${syncStatus}`} onClick={refreshFromDrive} type="button">
-                <span className={syncStatus === "syncing" ? "syncing" : syncStatus === "synced" ? "synced" : syncStatus === "error" ? "error" : ""}>
-                  {syncStatus === "syncing" ? "↻" : syncStatus === "synced" ? "✓" : syncStatus === "error" ? "!" : "◌"}
-                </span>
-              </button>
+              <>
+                <button className="icon-button sync-indicator" aria-label="Sync status" title={`Sync: ${syncStatus}`} onClick={refreshFromDrive} type="button">
+                  <span className={syncStatus === "syncing" ? "syncing" : syncStatus === "synced" ? "synced" : syncStatus === "error" ? "error" : ""}>
+                    {syncStatus === "syncing" ? "↻" : syncStatus === "synced" ? "✓" : syncStatus === "error" ? "!" : "◌"}
+                  </span>
+                </button>
+                <button className="icon-button" aria-label="Logout" title="Disconnect from Google Drive" onClick={logout} type="button">
+                  <span>↦</span>
+                </button>
+              </>
             ) : (
               <button className="icon-button" aria-label="Connect to Google Drive" title="Connect to Google Drive" onClick={login} type="button">
                 <span>⇄</span>

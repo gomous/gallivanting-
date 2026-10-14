@@ -7,15 +7,11 @@ export default defineConfig({
     host: "127.0.0.1",
     port: 5173,
     strictPort: true,
-    // Proxy API/auth/drive requests to the Cloudflare Worker during development
+    // Proxy API requests to Cloudflare Pages Functions during development
+    // In production, Pages Functions are served automatically from /functions/api/
     proxy: {
-      "/auth": {
-        target: "https://gallivanter-api.jolly-rain-7712.workers.dev",
-        changeOrigin: true,
-        secure: false,
-      },
-      "/drive": {
-        target: "https://gallivanter-api.jolly-rain-7712.workers.dev",
+      "/api": {
+        target: "http://localhost:8787",
         changeOrigin: true,
         secure: false,
       },

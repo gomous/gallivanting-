@@ -47,11 +47,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check auth on mount
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const authSuccess = params.get("auth") === "success";
+
     const checkAuth = async () => {
       const authed = await checkAuthStatus();
       setAuthenticated(authed);
       setConnectionStatus(authed ? "connected" : "disconnected");
+
+      // After OAuth callback, reload data from Drive
+      if (authed && authSuccess) {
+        const result = await loadWorkspace();
+        setLeads(() => result.leads);
+        setTasks(() => result.tasks);
+        // Clean up the URL query param
+        window.history.replaceState({}, "", window.location.pathname);
+      }
     };
+
     void checkAuth();
     setHasCreds(hasGoogleCreds());
   }, []);
