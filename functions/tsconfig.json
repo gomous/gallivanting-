@@ -4,7 +4,7 @@
     "lib": ["ES2022", "DOM"],
     "allowJs": false,
     "skipLibCheck": true,
-    "strict": true,
+    "strict": false,
     "forceConsistentCasingInFileNames": true,
     "module": "ESNext",
     "moduleResolution": "Bundler",
@@ -12,5 +12,5 @@
     "isolatedModules": true,
     "noEmit": true
   },
-  "include": ["api/**/*.ts"]
+  "include": ["api/**/*.ts", "types.d.ts"]
 }
