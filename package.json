@@ -19,21 +19,27 @@
     "test": "node --experimental-strip-types --test src/crm/engine.test.ts src/backend/localBackend.test.ts src/moduleRecords.test.ts electron/persistence.test.ts",
     "typecheck:functions": "tsc --project functions/tsconfig.json --noEmit",
     "verify": "npm run typecheck && npm run typecheck:functions && npm test && npm run web:build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "server:typecheck": "tsc -p server/tsconfig.json",
+    "server:smoke": "node server/smoke.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-react": "5.2.0",
     "electron": "44.7.0",
     "electron-vite": "5.0.0",
     "form-data": "^4.0.6",
+    "hono": "^4.13.13",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261015.1",
     "@types/node": "26.6.4",
     "@types/react": "19.2.6",
     "@types/react-dom": "19.2.3",
     "typescript": "7.0.2",
-    "vite": "7.3.7"
+    "vite": "7.3.7",
+    "wrangler": "^4.151.0"
   }
 }

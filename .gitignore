@@ -14,3 +14,7 @@ secrets_payload.json
 worker/dist/
 *.pem
 *.key
+
+# local worker secrets
+server/.dev.vars
+server/.wrangler/
