@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent,
 import { initialLeads, initialTasks } from "./data";
 import { useAuth } from "./cloudflare/AuthContext";
 import { SettingsDialog } from "./cloudflare/SettingsDialog";
+import { LandingPage } from "./cloudflare/LandingPage";
 import { CrmModuleWorkspace, CrmSystemWorkspace, type CrmModuleKey, type CrmRoute } from "./crmModules";
 import {
   industries,
@@ -207,7 +208,7 @@ function routeFromLocation(): { activeNav: NavKey; route: CrmRoute | null } {
 
 function App() {
   const initialRoute = useMemo(routeFromLocation, []);
-  const { leads, tasks, setLeads, setTasks, authenticated, connectionStatus, syncStatus, login, logout, refreshFromDrive, saveNow } = useAuth();
+  const { leads, tasks, setLeads, setTasks, authenticated, syncStatus, login, logout, refreshFromDrive, saveNow } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
 
   const [activeNav, setActiveNav] = useState<NavKey>(initialRoute.activeNav);
@@ -536,29 +537,7 @@ function App() {
   return (
     <div className="app-shell">
       {!authenticated ? (
-        <div className="landing-page">
-          <div className="landing-content">
-            <div className="brand-lockup landing-brand">
-              <div className="brand-mark">G</div>
-              <div>
-                <div className="brand-name">Gallivanter</div>
-                <div className="brand-caption">local CRM</div>
-              </div>
-            </div>
-            <div className="landing-card">
-              <h1>Welcome to Gallivanter</h1>
-              <p>Connect your Google Drive to sync CRM data across devices.</p>
-              <div className="landing-creds-note">
-                <p>ℹ️ Google OAuth credentials (GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET) must be configured in the Cloudflare Pages environment variables.</p>
-                <p>If you see an error after clicking login, contact your administrator to set up the OAuth credentials.</p>
-              </div>
-              <button className="primary-button landing-login-btn" onClick={login} type="button">
-                <span>🔐</span> Connect to Google Drive
-              </button>
-              {connectionStatus === "checking" && <div className="landing-checking">Checking connection...</div>}
-            </div>
-          </div>
-        </div>
+        <LandingPage />
       ) : (
         <>
           <div className={`mobile-sidebar-backdrop ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} aria-hidden="true" />
