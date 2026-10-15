@@ -17,9 +17,9 @@ export default defineConfig({
       },
     },
   },
-  build: {
-    outDir: "dist",
-    emptyOutDir: true,
-  },
+   build: {
+     outDir: "dist",
+     emptyOutDir: false,
+   },
 });
 

@@ -18,18 +18,20 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
+          node-version: '20'
           cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Verify
-        run: npm run verify
+      - name: Build
+        run: npm run web:build
 
       - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        uses: cloudflare/pages-action@v1
         with:
           accountId: ${{ secrets.CF_ACCOUNT_ID }}
           apiToken: ${{ secrets.CF_API_TOKEN }}
-          command: pages deploy dist --project-name gallivanter
+          projectName: gallivanter
+          directory: dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

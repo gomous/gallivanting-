@@ -5,7 +5,7 @@ const GOOGLE_DRIVE_BASE = "https://www.googleapis.com/drive/v3";
 const SESSION_COOKIE = "gallivanter_session";
 
 // These can be set as Pages Environment Variables, or passed from the client
-const DEFAULT_REDIRECT_URI = "https://gallivanter.jolly-rain-7712.pages.dev/api/google/callback";
+const DEFAULT_REDIRECT_URI = "https://gallivanter.pages.dev/api/google/callback";
 const DEFAULT_FILE_NAME = "gallivanter-workspace.json";
 
 function buildAuthUrl(clientId: string, redirectUri: string, state: string): string {
@@ -281,7 +281,7 @@ const handleGet = async (request: Request) => {
       serializeCookie(`${SESSION_COOKIE}_creds`, "", 0),
     ].join(", ");
 
-    const redirectUrl = `https://${url.hostname}/?auth=success`;
+    const redirectUrl = `https://gallivanter.pages.dev/?auth=success`;
     return new Response(null, {
       status: 302,
       headers: {
