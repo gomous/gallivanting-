@@ -366,10 +366,10 @@ const handlePost = async (request: Request) => {
     }
 
     const valid = await getValidToken(token);
-    const fileId = await writeWorkspace(valid.access_token, body.workspace, token.existingFileId ?? null, DEFAULT_FILE_NAME);
+    const fileId = await writeWorkspace(valid.access_token, body.workspace, valid.existingFileId ?? null, DEFAULT_FILE_NAME);
 
-    // Update the session with the fileId
-    const updatedToken = { ...token, existingFileId: fileId };
+    // Update the session with the fileId and refreshed token
+    const updatedToken = { ...valid, existingFileId: fileId };
     const sessionCookie = serializeCookie(SESSION_COOKIE, JSON.stringify(updatedToken), 60 * 60 * 24 * 30);
 
     return new Response(JSON.stringify({ fileId, updatedAt: new Date().toISOString() }), {
