@@ -43,7 +43,7 @@ export const onRequestGet: ExportedHandler<Env> = async (ctx) => {
       headers: {
         ...corsHeaders,
         Location: redirectUrl,
-        "Set-Cookie": `${sessionCookie}, ${clearCookie}`,
+        "Set-Cookie": [sessionCookie, clearCookie],
       },
     });
   } catch (e) {
