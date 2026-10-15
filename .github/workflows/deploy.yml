@@ -27,12 +27,12 @@ jobs:
       - name: Install wrangler
         run: npm install -g wrangler
 
-      - name: Build
+      - name: Build production assets
         run: npm run web:build
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
         with:
-          accountId: ${{ secrets.CF_ACCOUNT_ID }}
           apiToken: ${{ secrets.CF_API_TOKEN }}
+          accountId: ${{ secrets.CF_ACCOUNT_ID }}
           command: pages deploy dist --project-name=gallivanter
