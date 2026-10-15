@@ -38,14 +38,16 @@ export const onRequestGet: ExportedHandler<Env> = async (ctx) => {
       : `https://${url.hostname}`;
     const redirectUrl = `${hostname}/?auth=success`;
 
-    return new Response(null, {
-      status: 302,
-      headers: {
-        ...corsHeaders,
-        Location: redirectUrl,
-        "Set-Cookie": [sessionCookie, clearCookie],
-      },
-    });
+    // IMPORTANT: each cookie must be its own Set-Cookie header.
+    // Passing an array (or a comma-joined string) in a plain headers object
+    // collapses both into ONE header, and the state cookie's "Max-Age=0"
+    // then deletes the session cookie. Headers.append() emits them separately.
+    const headers = new Headers(corsHeaders);
+    headers.set("Location", redirectUrl);
+    headers.append("Set-Cookie", sessionCookie);
+    headers.append("Set-Cookie", clearCookie);
+
+    return new Response(null, { status: 302, headers });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Token exchange failed";
     return new Response(JSON.stringify({ error: msg }), {
