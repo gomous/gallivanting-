@@ -36,3 +36,27 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: pages deploy dist --project-name=gallivanter
+
+      - name: Clean up old Pages deployments
+        # Cloudflare Pages creates a <hash>.gallivanter.pages.dev permalink
+        # for every deployment. We keep only the latest (current production)
+        # deployment and delete all older ones so the backlog of "dummy"
+        # preview URLs doesn't accumulate.
+        env:
+          ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          set -e
+          LATEST=$(curl -s -H "Authorization: Bearer $API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects/gallivanter?include=latest_deployment" \
+            | jq -r '.result.latest_deployment.id')
+          echo "Keeping latest deployment: $LATEST"
+          curl -s -H "Authorization: Bearer $API_TOKEN" \
+            "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects/gallivanter/deployments?per_page=100" \
+            | jq -r --arg latest "$LATEST" '.result[] | select(.id != $latest) | .id' \
+            | while read -r DEPLOY_ID; do
+                echo "Deleting old deployment $DEPLOY_ID..."
+                curl -s -o /dev/null -X DELETE -H "Authorization: Bearer $API_TOKEN" \
+                  "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects/gallivanter/deployments/$DEPLOY_ID"
+              done
+          echo "Old deployments cleaned up."
