@@ -1158,6 +1158,613 @@ body { background: #f7f8fa; font-family: "Lato", "Segoe UI", Arial, sans-serif; 
 .sync-dot.disconnected {
   background: #f59e0b;
 }
+
+/* === Final mobile usability pass ===
+   Keep primary actions reachable, turn wide data surfaces into cards, and
+   present selected records as an actual mobile detail surface. */
+@media (max-width: 768px) {
+  html,
+  body,
+  #root {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    background: #f6f8fc;
+  }
+
+  .app-shell,
+  .main-area {
+    min-height: 100dvh;
+  }
+
+  .main-area {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .topbar {
+    position: sticky !important;
+    top: 0;
+    z-index: 40;
+    display: flex;
+    width: 100%;
+    min-height: 60px !important;
+    height: 60px !important;
+    padding: 0 12px !important;
+    gap: 8px;
+  }
+
+  .topbar-left,
+  .topbar-actions {
+    min-width: 0;
+  }
+
+  .topbar-left {
+    flex: 1 1 auto;
+  }
+
+  .topbar-actions {
+    display: flex !important;
+    flex: 0 0 auto;
+    gap: 6px !important;
+  }
+
+  .mobile-menu-button {
+    display: inline-flex !important;
+    flex: 0 0 auto;
+    width: 34px;
+    height: 34px;
+    margin-right: 5px;
+    padding: 8px;
+    border: 1px solid #dfe5ee;
+    border-radius: 9px;
+    background: #fff;
+  }
+
+  .mobile-menu-button span {
+    width: 16px;
+    height: 2px;
+    margin: 2px 0;
+    border-radius: 2px;
+    background: #5f6d82;
+  }
+
+  .breadcrumbs {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 11px;
+  }
+
+  .breadcrumbs strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .topbar .global-search {
+    display: flex !important;
+    flex: 0 1 clamp(128px, 34vw, 190px);
+    width: auto !important;
+    min-width: 0;
+    height: 34px;
+    padding: 0 9px;
+    border-radius: 9px;
+  }
+
+  .topbar .global-search input {
+    min-width: 0;
+    font-size: 16px;
+  }
+
+  .topbar .icon-button {
+    display: inline-flex !important;
+    flex: 0 0 32px;
+    width: 32px !important;
+    height: 32px !important;
+    border-radius: 9px;
+  }
+
+  .content-wrap {
+    width: 100%;
+    max-width: none;
+    padding: 20px 14px calc(76px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .page-heading {
+    display: flex;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 18px !important;
+  }
+
+  .page-heading h1 {
+    font-size: 25px !important;
+    letter-spacing: -.7px;
+  }
+
+  .page-heading p {
+    max-width: 34em;
+    line-height: 1.5;
+  }
+
+  .heading-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px;
+  }
+
+  .heading-actions > button {
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .list-toolbar,
+  .tasks-toolbar,
+  .crm-module-toolbar {
+    display: block;
+    min-height: 0 !important;
+    padding: 14px !important;
+  }
+
+  .view-title {
+    min-width: 0;
+    margin-bottom: 13px;
+  }
+
+  .view-title > div:last-child {
+    min-width: 0;
+  }
+
+  .view-title strong,
+  .view-title span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .toolbar-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    justify-content: stretch;
+    width: 100%;
+    gap: 7px;
+  }
+
+  .toolbar-actions .search-box {
+    grid-column: 1 / -1;
+    width: 100% !important;
+    height: 40px;
+  }
+
+  .toolbar-button {
+    width: 100%;
+    min-width: 0;
+    min-height: 38px;
+    height: auto;
+    padding: 8px 9px;
+    border-radius: 9px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .toolbar-refresh,
+  .toolbar-more,
+  .toolbar-actions-menu {
+    display: none !important;
+  }
+
+  .toolbar-actions .create-toolbar-button {
+    display: inline-flex !important;
+    grid-column: 1 / -1;
+    color: #fff;
+    border-color: #5556d9;
+    background: #5556d9;
+  }
+
+  .table-layout {
+    display: block !important;
+    min-height: 0 !important;
+  }
+
+  .table-wrap {
+    overflow: visible !important;
+  }
+
+  .leads-card {
+    overflow: visible;
+  }
+
+  .leads-card .table-layout table,
+  .leads-card .table-layout tbody,
+  .leads-card .table-layout tr,
+  .leads-card .table-layout td {
+    display: block;
+    width: 100%;
+  }
+
+  .leads-card .table-layout thead {
+    display: none;
+  }
+
+  .leads-card .table-layout tr {
+    margin: 10px 0;
+    padding: 10px 13px;
+    border: 1px solid #e2e8f1;
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: 0 5px 14px rgba(30, 41, 59, .04);
+  }
+
+  .leads-card .table-layout tr.selected-row {
+    border-color: #aeb0f0;
+    box-shadow: 0 0 0 3px rgba(91, 92, 226, .10);
+  }
+
+  .leads-card .table-layout td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 38px;
+    padding: 8px 0 !important;
+    border-bottom: 1px solid #eef2f7;
+    white-space: normal;
+    text-align: right;
+  }
+
+  .leads-card .table-layout td:last-child {
+    border-bottom: 0;
+  }
+
+  .leads-card .table-layout td[data-label]::before {
+    flex: 0 0 72px;
+    color: #91a0b4;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .35px;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .leads-card .table-layout td[data-label="Lead name"] {
+    display: block;
+    min-height: 0;
+    padding: 3px 0 11px !important;
+    text-align: left;
+  }
+
+  .leads-card .table-layout td[data-label="Lead name"]::before {
+    display: none;
+  }
+
+  .leads-card .table-layout td.check-cell {
+    display: none;
+  }
+
+  .lead-cell {
+    min-width: 0;
+  }
+
+  .lead-cell > div:last-child,
+  .owner-cell {
+    min-width: 0;
+  }
+
+  .lead-cell strong,
+  .lead-cell span,
+  .company-name,
+  .cell-subtext,
+  .source-text,
+  .owner-cell {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .detail-panel,
+  .crm-record-panel {
+    position: fixed !important;
+    z-index: 60 !important;
+    inset: 60px 0 0 !important;
+    width: 100% !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 18px 16px calc(28px + env(safe-area-inset-bottom)) !important;
+    overflow-y: auto !important;
+    border: 0 !important;
+    border-radius: 18px 18px 0 0 !important;
+    background: #fff !important;
+    box-shadow: 0 -12px 40px rgba(17, 27, 46, .18) !important;
+  }
+
+  .table-layout:has(.detail-panel)::before,
+  .crm-module-wrap:has(.crm-record-panel)::before {
+    position: fixed;
+    z-index: 55;
+    inset: 60px 0 0;
+    display: block;
+    background: rgba(17, 27, 46, .44);
+    content: "";
+  }
+
+  .detail-topbar,
+  .crm-record-panel-heading {
+    position: sticky;
+    top: -18px;
+    z-index: 2;
+    padding-bottom: 12px;
+    background: #fff;
+  }
+
+  .detail-actions,
+  .crm-record-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 7px;
+  }
+
+  .detail-actions > button,
+  .crm-record-actions > button {
+    min-height: 38px;
+  }
+
+  .detail-fields,
+  .zoho-field-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .detail-field,
+  .zoho-field-grid > div {
+    min-width: 0;
+  }
+
+  .crm-module-body {
+    min-height: 0;
+    overflow: visible !important;
+  }
+
+  .crm-table,
+  .crm-table tbody,
+  .crm-table tr,
+  .crm-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .crm-table thead {
+    display: none;
+  }
+
+  .crm-table tr {
+    margin: 10px 12px;
+    padding: 10px 13px;
+    border: 1px solid #e2e8f1;
+    border-radius: 13px;
+    background: #fff;
+    box-shadow: 0 5px 14px rgba(30, 41, 59, .04);
+  }
+
+  .crm-table td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-height: 38px;
+    padding: 8px 0 !important;
+    border-bottom: 1px solid #eef2f7;
+    white-space: normal;
+    text-align: right;
+  }
+
+  .crm-table td:last-child {
+    border-bottom: 0;
+  }
+
+  .crm-table td[data-label]::before {
+    flex: 0 0 90px;
+    color: #91a0b4;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: .3px;
+    text-align: left;
+    text-transform: uppercase;
+  }
+
+  .crm-table td.crm-select-cell {
+    display: none;
+  }
+
+  .crm-table td[data-label]:first-of-type {
+    min-height: 0;
+    padding-top: 3px !important;
+  }
+
+  .crm-table td[data-label]:first-of-type::before {
+    display: none;
+  }
+
+  .crm-table .crm-primary-cell,
+  .crm-table td > span,
+  .crm-row-actions button {
+    max-width: 70%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .crm-row-actions {
+    justify-content: flex-end !important;
+  }
+
+  .crm-row-actions::before {
+    display: none;
+  }
+
+  .crm-pagination {
+    justify-content: space-between;
+    padding: 0 14px;
+  }
+
+  .kanban-grid,
+  .pipeline-board,
+  .crm-kanban {
+    min-width: 0 !important;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+  }
+
+  .kanban-grid {
+    grid-template-columns: repeat(4, 260px) !important;
+  }
+
+  .pipeline-board {
+    grid-template-columns: repeat(6, 260px) !important;
+  }
+
+  .tasks-card {
+    overflow: visible;
+  }
+
+  .task-summary-row,
+  .pipeline-summary,
+  .metric-grid,
+  .report-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .task-summary,
+  .pipeline-summary-card,
+  .metric-card,
+  .report-metric {
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .task-summary strong,
+  .pipeline-summary-card strong,
+  .metric-value,
+  .report-metric strong {
+    font-size: 20px;
+  }
+
+  .zoho-detail-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    padding: 14px;
+  }
+
+  .zoho-contact-heading {
+    flex: 1 1 calc(100% - 58px);
+    min-width: 0;
+  }
+
+  .zoho-contact-heading h1 {
+    overflow: hidden;
+    font-size: 19px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .zoho-detail-header-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 7px;
+    margin-top: 4px;
+  }
+
+  .zoho-detail-header-actions > button {
+    min-height: 38px;
+  }
+
+  .zoho-detail-tabs {
+    gap: 22px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .zoho-detail-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .zoho-detail-card-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 9px;
+  }
+
+  .zoho-detail-card-heading > div {
+    display: flex;
+    width: 100%;
+    gap: 16px;
+    overflow-x: auto;
+  }
+
+  .zoho-contact-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .zoho-next-action {
+    grid-column: 1 / -1 !important;
+  }
+
+  .zoho-action-dialog,
+  .settings-dialog {
+    max-width: calc(100vw - 28px) !important;
+    max-height: calc(100dvh - 28px) !important;
+    border-radius: 16px !important;
+  }
+
+  .settings-overlay,
+  .zoho-action-backdrop,
+  .modal-backdrop {
+    align-items: flex-end;
+    padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .create-modal {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - 20px) !important;
+    margin: 0 !important;
+    overflow-y: auto;
+    border-radius: 16px 16px 8px 8px !important;
+  }
+
+  .form-field input,
+  .form-field select,
+  .form-field textarea,
+  .zoho-action-dialog input,
+  .zoho-action-dialog textarea,
+  .search-box input,
+  .global-search input {
+    font-size: 16px !important;
+  }
+
+  .workspace-toast,
+  .zoho-inline-notice {
+    right: 12px;
+    bottom: calc(14px + env(safe-area-inset-bottom));
+    left: 12px;
+    max-width: none;
+  }
+
+  .crm-utility-bar {
+    right: 0;
+    bottom: 0;
+    left: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
 :root { --ink: #172033; --muted: #718096; --line: #e4e9f1; --soft-line: #eef2f7; --panel: #fff; --brand: #5b5ce2; --brand-dark: #4647c9; --blue-soft: #eef2ff; --shadow: 0 18px 42px rgba(30, 41, 59, .08); }
 html { background: #f3f6fb; }
 body { color: var(--ink); background: #f3f6fb; font-family: Inter, ui-sans-serif, system-ui, -apple系统, BlinkMacSystemFont, "Segoe UI", sans-serif; }
