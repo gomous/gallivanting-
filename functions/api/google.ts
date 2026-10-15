@@ -1,4 +1,14 @@
-import type { DriveSession } from "../../src/cloudflare/driveBackend";
+// Inline the DriveSession type to avoid cross-directory imports
+interface DriveSession {
+  access_token: string;
+  refresh_token: string;
+  expires_at: number;
+  scope: string;
+  token_type: string;
+  clientId: string;
+  clientSecret: string;
+  existingFileId: string | null;
+}
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_DRIVE_BASE = "https://www.googleapis.com/drive/v3";

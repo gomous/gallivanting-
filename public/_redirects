@@ -1,3 +1,2 @@
-# Pages Functions handle /api/* routes automatically
-# SPA fallback for all other routes
+/api/* 200
 /* /index.html 200
