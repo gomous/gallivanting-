@@ -1,4 +1,4 @@
-const CACHE = 'gallivanter-v2';
+const CACHE = 'gallivanter-v3';
 const ASSETS = [
   '/',
   '/index.html',
@@ -6,11 +6,24 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
-  // Force the waiting service worker to become active
   self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE).then(cache => cache.addAll(ASSETS))
   );
+});
+
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys => Promise.all(
+      keys.map(key => key !== CACHE && caches.delete(key))
+    ))
+  );
+});
+
+self.addEventListener('message', event => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', e => {
