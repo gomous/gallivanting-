@@ -1,26 +1,25 @@
 /* ============================================================
-   Gallivanter landing page
-   Palette: cream #faf9f5 · coral #ff5c35 · deep teal #0d3b3b
-   Type: DM Serif Display (headings) + DM Sans (body)
+   Gallivanter landing page — matches the app theme
+   Palette: light #f3f6fb · indigo #5b5ce2 · ink #172033
+   Type: Inter (matches app)
    ============================================================ */
 
 .lp-page {
-  --lp-bg: #faf9f5;
-  --lp-ink: #1f2d3d;
-  --lp-muted: #516f90;
-  --lp-coral: #ff5c35;
-  --lp-coral-dark: #e64a24;
-  --lp-teal: #0d3b3b;
+  --lp-bg: #f3f6fb;
+  --lp-ink: #172033;
+  --lp-muted: #718096;
+  --lp-brand: #5b5ce2;
+  --lp-brand-dark: #4647c9;
+  --lp-brand-soft: #eef2ff;
   --lp-card: #ffffff;
-  --lp-tint: #f6f1ea;
-  --lp-line: #e8e2d8;
-  --lp-serif: "DM Serif Display", Georgia, serif;
-  --lp-sans: "DM Sans", Arial, sans-serif;
+  --lp-tint: #f8f9ff;
+  --lp-line: #e4e9f1;
+  --lp-shadow: 0 18px 42px rgba(30, 41, 59, .08);
 
   min-height: 100vh;
   background: var(--lp-bg);
   color: var(--lp-ink);
-  font-family: var(--lp-sans);
+  font-family: Inter, ui-sans-serif, system-ui, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -36,9 +35,10 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  background: rgba(250, 249, 245, 0.92);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, .9);
+  backdrop-filter: blur(16px);
   border-bottom: 1px solid var(--lp-line);
+  box-shadow: 0 5px 18px rgba(30, 41, 59, .035);
 }
 .lp-nav-inner {
   max-width: 1120px;
@@ -56,16 +56,21 @@
   color: var(--lp-ink);
 }
 .lp-brand-mark {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: var(--lp-coral);
+  width: 35px;
+  height: 35px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
   color: #fff;
-  font: 700 18px/34px var(--lp-sans);
-  text-align: center;
+  font-weight: 800;
+  font-size: 17px;
+  background: linear-gradient(145deg, #7779f0, #4849c9);
+  box-shadow: 0 8px 16px rgba(82, 83, 213, .22);
 }
 .lp-brand-name {
-  font: 600 17px/1 var(--lp-sans);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -.5px;
 }
 .lp-nav-links {
   display: flex;
@@ -75,11 +80,12 @@
 .lp-nav-links a {
   color: var(--lp-muted);
   text-decoration: none;
-  font-size: 14.5px;
-  font-weight: 500;
+  font-size: 14px;
+  font-weight: 600;
+  transition: color .16s ease;
 }
 .lp-nav-links a:hover {
-  color: var(--lp-coral);
+  color: var(--lp-brand);
 }
 
 /* ── Buttons ── */
@@ -89,29 +95,29 @@
   justify-content: center;
   gap: 8px;
   border: 0;
-  border-radius: 999px;
+  border-radius: 11px;
   cursor: pointer;
-  font-family: var(--lp-sans);
-  font-weight: 600;
+  font-family: inherit;
+  font-weight: 700;
   text-decoration: none;
-  transition: background 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+  transition: background .18s ease, transform .18s ease, box-shadow .18s ease;
 }
 .lp-btn-primary {
-  background: var(--lp-coral);
   color: #fff;
-  box-shadow: 0 10px 24px rgba(255, 92, 53, 0.28);
+  background: var(--lp-brand);
+  box-shadow: 0 6px 14px rgba(85, 86, 217, .18);
 }
 .lp-btn-primary:hover {
-  background: var(--lp-coral-dark);
+  background: var(--lp-brand-dark);
   transform: translateY(-1px);
 }
 .lp-btn-sm {
-  font-size: 14px;
+  font-size: 13px;
   padding: 9px 18px;
 }
 .lp-btn-lg {
-  font-size: 16px;
-  padding: 15px 34px;
+  font-size: 15px;
+  padding: 14px 32px;
 }
 
 /* ── Hero ── */
@@ -122,25 +128,27 @@
   max-width: 1120px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
   gap: 56px;
   align-items: center;
 }
 .lp-eyebrow {
   display: inline-block;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.04em;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
   text-transform: uppercase;
-  color: var(--lp-coral);
-  background: #ffe1d8;
+  color: var(--lp-brand);
+  background: var(--lp-brand-soft);
   border-radius: 999px;
   padding: 6px 14px;
   margin-bottom: 20px;
 }
 .lp-h1 {
-  font: 400 clamp(34px, 5vw, 56px) / 1.08 var(--lp-serif);
-  letter-spacing: -0.01em;
+  font-size: clamp(34px, 5vw, 54px);
+  font-weight: 800;
+  letter-spacing: -1.6px;
+  line-height: 1.08;
   margin: 0 0 18px;
 }
 .lp-lede {
@@ -176,8 +184,8 @@
   max-width: 420px;
   background: var(--lp-card);
   border: 1px solid var(--lp-line);
-  border-radius: 18px;
-  box-shadow: 0 24px 60px rgba(31, 45, 61, 0.12);
+  border-radius: 16px;
+  box-shadow: var(--lp-shadow);
   padding: 20px;
   display: grid;
   gap: 12px;
@@ -193,9 +201,9 @@
 }
 .lp-mock-pill {
   font-size: 12.5px;
-  font-weight: 600;
-  color: var(--lp-coral);
-  background: #ffe1d8;
+  font-weight: 700;
+  color: var(--lp-brand);
+  background: var(--lp-brand-soft);
   border-radius: 999px;
   padding: 4px 12px;
 }
@@ -204,6 +212,7 @@
   gap: 10px;
   align-items: flex-start;
   background: var(--lp-tint);
+  border: 1px solid var(--lp-line);
   border-radius: 12px;
   padding: 12px 14px;
 }
@@ -220,18 +229,19 @@
   height: 9px;
   margin-top: 5px;
   border-radius: 50%;
-  background: #2aa198;
+  background: #58aa84;
   flex: 0 0 auto;
 }
 .lp-mock-dot-warn {
-  background: var(--lp-coral);
+  background: #e5a84d;
 }
 .lp-mock-voice {
-  border: 1.5px dashed var(--lp-coral);
+  border: 1.5px dashed var(--lp-brand);
   border-radius: 12px;
   padding: 12px 14px;
   display: grid;
   gap: 6px;
+  background: var(--lp-brand-soft);
 }
 .lp-mock-mic {
   font-size: 15px;
@@ -243,8 +253,8 @@
 }
 .lp-mock-done {
   font-size: 12.5px;
-  color: #2aa198;
-  font-weight: 600;
+  color: #2c8a66;
+  font-weight: 700;
 }
 
 /* Works-with strip */
@@ -258,9 +268,9 @@
   justify-content: center;
 }
 .lp-works-label {
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: .08em;
   text-transform: uppercase;
   color: var(--lp-muted);
 }
@@ -280,6 +290,7 @@
   border: 1px solid var(--lp-line);
   border-radius: 999px;
   padding: 7px 16px;
+  box-shadow: 0 3px 10px rgba(41, 46, 77, .03);
 }
 
 /* ── Sections ── */
@@ -290,7 +301,8 @@
 }
 .lp-section-tint {
   max-width: none;
-  background: var(--lp-tint);
+  background: #fff;
+  border-block: 1px solid var(--lp-line);
 }
 .lp-section-tint > * {
   max-width: 1120px;
@@ -298,7 +310,10 @@
   margin-right: auto;
 }
 .lp-h2 {
-  font: 400 clamp(26px, 3.4vw, 38px) / 1.15 var(--lp-serif);
+  font-size: clamp(26px, 3.4vw, 36px);
+  font-weight: 800;
+  letter-spacing: -1px;
+  line-height: 1.15;
   margin: 0 0 10px;
   text-align: center;
 }
@@ -326,10 +341,13 @@
   border: 1px solid var(--lp-line);
   border-radius: 16px;
   padding: 24px;
+  box-shadow: 0 3px 10px rgba(41, 46, 77, .03);
 }
 .lp-feature h3,
 .lp-card h3 {
-  font: 600 17px/1.35 var(--lp-sans);
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: -.3px;
   margin: 0 0 8px;
 }
 .lp-feature p,
@@ -345,10 +363,10 @@
   justify-content: center;
   width: 34px;
   height: 34px;
-  border-radius: 50%;
-  background: var(--lp-coral);
-  color: #fff;
-  font-weight: 700;
+  border-radius: 11px;
+  background: linear-gradient(145deg, #eef0ff, #e0e4ff);
+  color: var(--lp-brand);
+  font-weight: 800;
   font-size: 15px;
   margin-bottom: 14px;
 }
@@ -356,7 +374,7 @@
 /* ── MCP dark section ── */
 .lp-section-dark {
   max-width: none;
-  background: var(--lp-teal);
+  background: #1e2235;
   color: #fff;
 }
 .lp-section-dark > * {
@@ -368,11 +386,11 @@
   color: #fff;
 }
 .lp-sub-light {
-  color: #cbd6e2;
+  color: #aab3c8;
 }
 .lp-mcp-demo {
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, .05);
+  border: 1px solid rgba(255, 255, 255, .12);
   border-radius: 16px;
   padding: 22px;
   display: grid;
@@ -398,8 +416,8 @@
   padding: 4px 12px;
 }
 .lp-mcp-you {
-  background: #ff9a7a;
-  color: #082a2a;
+  background: var(--lp-brand);
+  color: #fff;
 }
 .lp-mcp-claude {
   background: #d97757;
@@ -411,11 +429,11 @@
   padding-left: 4px;
 }
 .lp-mcp-line-tools code {
-  font-family: ui-monospace, monospace;
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 12.5px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #ffe1d8;
+  background: rgba(255, 255, 255, .08);
+  border: 1px solid rgba(255, 255, 255, .16);
+  color: #c7d2fe;
   border-radius: 8px;
   padding: 5px 10px;
 }
@@ -438,7 +456,7 @@
 }
 .lp-faq summary {
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 15px;
   list-style: none;
   position: relative;
@@ -453,7 +471,7 @@
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  color: var(--lp-coral);
+  color: var(--lp-brand);
   font-size: 18px;
   font-weight: 700;
 }
@@ -480,13 +498,14 @@
   text-align: center;
   color: var(--lp-muted);
   font-size: 13.5px;
+  background: #fff;
 }
 .lp-footer a {
   color: var(--lp-muted);
   text-decoration: none;
 }
 .lp-footer a:hover {
-  color: var(--lp-coral);
+  color: var(--lp-brand);
 }
 
 /* ── Mobile ── */
@@ -516,8 +535,5 @@
   }
   .lp-h1 {
     font-size: 32px;
-  }
-  .lp-brand-name {
-    font-size: 15px;
   }
 }

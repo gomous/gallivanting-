@@ -534,13 +534,13 @@ function App() {
     window.history.pushState({}, "", `/crm/${localZohoOrg}/tab/Leads`);
   }
 
+  if (!authenticated) {
+    return <LandingPage />;
+  }
+
   return (
     <div className="app-shell">
-      {!authenticated ? (
-        <LandingPage />
-      ) : (
-        <>
-          <div className={`mobile-sidebar-backdrop ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+      <div className={`mobile-sidebar-backdrop ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} aria-hidden="true" />
       <aside className={`sidebar ${sidebarOpen ? "mobile-open" : ""}`}>
         <div className="brand-lockup">
           <div className="brand-mark">G</div>
@@ -711,8 +711,6 @@ function App() {
       {showCreate ? <CreateLeadModal draft={draft} editing={Boolean(editingLeadId)} error={formError} onChange={updateDraft} onClose={() => { setShowCreate(false); setEditingLeadId(null); setFormError(""); }} onSubmit={handleCreate} /> : null}
       {showTaskCreate ? <CreateTaskModal draft={taskDraft} error={taskFormError} onChange={updateTaskDraft} onClose={() => { setShowTaskCreate(false); setTaskFormError(""); }} onSubmit={handleCreateTask} /> : null}
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
-        </>
-      )}
     </div>
   );
 }
