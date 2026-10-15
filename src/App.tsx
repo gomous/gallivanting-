@@ -535,7 +535,33 @@ function App() {
 
   return (
     <div className="app-shell">
-      <div className={`mobile-sidebar-backdrop ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+      {!authenticated ? (
+        <div className="landing-page">
+          <div className="landing-content">
+            <div className="brand-lockup landing-brand">
+              <div className="brand-mark">G</div>
+              <div>
+                <div className="brand-name">Gallivanter</div>
+                <div className="brand-caption">local CRM</div>
+              </div>
+            </div>
+            <div className="landing-card">
+              <h1>Welcome to Gallivanter</h1>
+              <p>Connect your Google Drive to sync CRM data across devices.</p>
+              <div className="landing-creds-note">
+                <p>ℹ️ Google OAuth credentials (GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET) must be configured in the Cloudflare Pages environment variables.</p>
+                <p>If you see an error after clicking login, contact your administrator to set up the OAuth credentials.</p>
+              </div>
+              <button className="primary-button landing-login-btn" onClick={login} type="button">
+                <span>🔐</span> Connect to Google Drive
+              </button>
+              {connectionStatus === "checking" && <div className="landing-checking">Checking connection...</div>}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <>
+          <div className={`mobile-sidebar-backdrop ${sidebarOpen ? "open" : ""}`} onClick={() => setSidebarOpen(false)} aria-hidden="true" />
       <aside className={`sidebar ${sidebarOpen ? "mobile-open" : ""}`}>
         <div className="brand-lockup">
           <div className="brand-mark">G</div>
@@ -706,6 +732,8 @@ function App() {
       {showCreate ? <CreateLeadModal draft={draft} editing={Boolean(editingLeadId)} error={formError} onChange={updateDraft} onClose={() => { setShowCreate(false); setEditingLeadId(null); setFormError(""); }} onSubmit={handleCreate} /> : null}
       {showTaskCreate ? <CreateTaskModal draft={taskDraft} error={taskFormError} onChange={updateTaskDraft} onClose={() => { setShowTaskCreate(false); setTaskFormError(""); }} onSubmit={handleCreateTask} /> : null}
       {showSettings && <SettingsDialog onClose={() => setShowSettings(false)} />}
+        </>
+      )}
     </div>
   );
 }

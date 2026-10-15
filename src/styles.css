@@ -2076,3 +2076,67 @@ body, .app-shell, .main-area { background: #f6f8fc; }
 .sync-dot.disconnected {
   background: #f59e0b;
 }
+
+/* Landing page for unauthenticated users */
+.landing-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: #f3f6fb;
+}
+.landing-content {
+  text-align: center;
+}
+.landing-brand {
+  margin-bottom: 32px;
+  justify-content: center;
+}
+.landing-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 48px;
+  max-width: 500px;
+  margin: 0 auto;
+  box-shadow: 0 28px 80px rgba(17, 27, 46, 0.12);
+}
+.landing-card h1 {
+  color: #172033;
+  font-size: 28px;
+  margin-bottom: 12px;
+}
+.landing-card p {
+  color: #627187;
+  font-size: 14px;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+.landing-login-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  padding: 12px 32px;
+  width: auto;
+  min-height: 44px;
+}
+.landing-checking {
+  margin-top: 16px;
+  color: #7a8093;
+  font-size: 13px;
+}
+.landing-creds-note {
+  background: #fef9e7;
+  border: 1px solid #f7dc6f;
+  border-radius: 8px;
+  padding: 12px;
+  margin: 20px 0;
+  text-align: left;
+}
+.landing-creds-note p {
+  color: #856404;
+  font-size: 12px;
+  margin: 4px 0;
+  line-height: 1.4;
+}
