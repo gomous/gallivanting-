@@ -6,3 +6,6 @@ zoho-capture-scripts/
 *.log
 deploy.zip
 secrets_payload.json
+.env
+.env.*
+!.env.example

@@ -16,6 +16,16 @@
       "url": "https://mcp.cloudflare.com/mcp",
       "enabled": true,
       "timeout": 60000
+    },
+    "github": {
+      "type": "remote",
+      "url": "https://api.githubcopilot.com/mcp/x/all",
+      "enabled": true,
+      "oauth": false,
+      "timeout": 60000,
+      "headers": {
+        "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
     }
   },
   "skills": {
