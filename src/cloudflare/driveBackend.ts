@@ -2,43 +2,13 @@ import type { Lead, Task } from "../types";
 import { initialLeads, initialTasks } from "../data";
 
 const API_BASE = "/api";
-const STORAGE_KEY = "gallivanter_google_creds";
 
 export type BackendMode = "browser-local" | "cloudflare-drive" | "electron-local-file";
-
-export interface DriveSession {
-  access_token: string;
-  refresh_token: string;
-  expires_at: number;
-  scope: string;
-  token_type: string;
-  clientId: string;
-  clientSecret: string;
-  existingFileId: string | null;
-}
 
 export interface WorkspacePayload {
   leads: Lead[];
   tasks: Task[];
   exportedAt: string;
-}
-
-/** Read Google OAuth credentials from localStorage */
-function getStoredCreds(): { clientId: string; clientSecret: string } | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const creds = JSON.parse(raw) as { clientId: string; clientSecret: string };
-    if (!creds.clientId || !creds.clientSecret) return null;
-    return creds;
-  } catch {
-    return null;
-  }
-}
-
-/** Check if the user has Google OAuth credentials configured */
-export function hasGoogleCreds(): boolean {
-  return getStoredCreds() !== null;
 }
 
 /** Check if the user is authenticated with Google Drive */
@@ -55,18 +25,13 @@ export async function checkAuthStatus(): Promise<boolean> {
   }
 }
 
-/** Start the Google OAuth flow. The client_id and client_secret are passed as query params. */
+/** Start the Google OAuth flow.
+ * Credentials are handled server-side via Pages Environment Variables.
+ * The user just needs to click the button and authorize with Google. */
 export function startGoogleAuth(): void {
-  const creds = getStoredCreds();
-  if (!creds) {
-    alert("Please configure your Google OAuth credentials in Settings first.");
-    return;
-  }
-  const params = new URLSearchParams({
-    client_id: creds.clientId,
-    client_secret: creds.clientSecret,
-  });
-  window.location.href = `${API_BASE}/google?${params.toString()}`;
+  // Redirect to the OAuth start endpoint
+  // The server handles the redirect to Google and back
+  window.location.href = `${API_BASE}/google`;
 }
 
 /** Log out of Google Drive */

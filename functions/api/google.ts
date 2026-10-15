@@ -1,13 +1,13 @@
 /**
  * Google OAuth flow start.
  * Route: /api/google
- * Query params: client_id, client_secret
+ * Uses server-side credentials from environment variables.
  */
 import {
   corsHeaders,
-  DEFAULT_REDIRECT_URI,
   SESSION_COOKIE,
   serializeCookie,
+  getRedirectUri,
 } from "./_lib";
 
 function buildAuthUrl(clientId: string, redirectUri: string, state: string): string {
@@ -23,30 +23,29 @@ function buildAuthUrl(clientId: string, redirectUri: string, state: string): str
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 }
 
-export const onRequestGet: ExportedHandler<{}> = async (ctx) => {
-  const url = new URL(ctx.request.url);
-  const clientId = url.searchParams.get("client_id") || "";
-  const clientSecret = url.searchParams.get("client_secret") || "";
+export const onRequestGet: ExportedHandler<Env> = async (ctx) => {
+  const env = ctx.env as Record<string, unknown>;
+  const clientId = env.GOOGLE_CLIENT_ID as string || "";
 
-  if (!clientId || !clientSecret) {
-    return new Response(JSON.stringify({ error: "Missing client_id or client_secret" }), {
-      status: 400,
+  if (!clientId) {
+    return new Response(JSON.stringify({ error: "Google OAuth not configured. Set GOOGLE_CLIENT_ID in Pages environment variables." }), {
+      status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 
+  const redirectUri = getRedirectUri(ctx.request);
   const state = crypto.randomUUID();
-  const authUrl = buildAuthUrl(clientId, DEFAULT_REDIRECT_URI, state);
+  const authUrl = buildAuthUrl(clientId, redirectUri, state);
 
-  const cookie = serializeCookie(`${SESSION_COOKIE}_creds`, btoa(JSON.stringify({ clientId, clientSecret })), 300);
   const stateCookie = serializeCookie(`${SESSION_COOKIE}_state`, state, 300);
 
   return new Response(null, {
     status: 302,
-    headers: { ...corsHeaders, Location: authUrl, "Set-Cookie": `${cookie}, ${stateCookie}` },
+    headers: { ...corsHeaders, Location: authUrl, "Set-Cookie": stateCookie },
   });
 };
 
-export const onRequestOptions: ExportedHandler<{}> = async () => {
+export const onRequestOptions: ExportedHandler = async () => {
   return new Response(null, { status: 204, headers: corsHeaders });
 };

@@ -1,8 +1,12 @@
 /** Cloudflare Pages Functions types */
 
+interface Env {
+  [key: string]: unknown;
+}
+
 interface PagesFunctionContext {
   request: Request;
-  env: Record<string, unknown>;
+  env: Env;
   params: Record<string, string>;
   next: () => Promise<Response>;
 }

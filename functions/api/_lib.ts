@@ -1,5 +1,6 @@
 /**
  * Shared utilities for Pages Functions.
+ * Uses server-side environment variables for Google OAuth credentials.
  */
 
 export interface DriveSession {
@@ -8,16 +9,32 @@ export interface DriveSession {
   expires_at: number;
   scope: string;
   token_type: string;
-  clientId: string;
-  clientSecret: string;
   existingFileId: string | null;
+}
+
+// Read credentials from environment variables (set in Pages Settings)
+function getCreds(env: Record<string, unknown>): { clientId: string; clientSecret: string } {
+  const clientId = env.GOOGLE_CLIENT_ID as string || "";
+  const clientSecret = env.GOOGLE_CLIENT_SECRET as string || "";
+  return { clientId, clientSecret };
 }
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_DRIVE_BASE = "https://www.googleapis.com/drive/v3";
 
 export const SESSION_COOKIE = "gallivanter_session";
-export const DEFAULT_REDIRECT_URI = "https://gallivanter.pages.dev/api/google/callback";
+
+// The redirect URI must match what's configured in Google Cloud Console
+// On Pages, this is always https://<project>.pages.dev/api/google/callback
+// For local dev, it's http://localhost:5173/api/google/callback
+export function getRedirectUri(request: Request): string {
+  const url = new URL(request.url);
+  if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+    return `${url.origin}/api/google/callback`;
+  }
+  return `https://${url.hostname}/api/google/callback`;
+}
+
 export const DEFAULT_FILE_NAME = "gallivanter-workspace.json";
 
 export const corsHeaders = {
@@ -28,11 +45,11 @@ export const corsHeaders = {
 };
 
 export async function exchangeCode(
-  clientId: string,
-  clientSecret: string,
+  env: Record<string, unknown>,
   code: string,
   redirectUri: string,
 ): Promise<DriveSession> {
+  const { clientId, clientSecret } = getCreds(env);
   const params = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
@@ -66,13 +83,15 @@ export async function exchangeCode(
     expires_at: Date.now() + data.expires_in * 1000,
     scope: data.scope,
     token_type: data.token_type,
-    clientId,
-    clientSecret,
     existingFileId: null,
   };
 }
 
-export async function doRefresh(refreshToken: string, clientId: string, clientSecret: string): Promise<DriveSession> {
+export async function doRefresh(
+  env: Record<string, unknown>,
+  refreshToken: string,
+): Promise<Partial<DriveSession>> {
+  const { clientId, clientSecret } = getCreds(env);
   const params = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
@@ -95,19 +114,16 @@ export async function doRefresh(refreshToken: string, clientId: string, clientSe
     access_token: string;
     refresh_token?: string;
     expires_in: number;
-    scope: string;
-    token_type: string;
+    scope?: string;
+    token_type?: string;
   };
 
   return {
     access_token: data.access_token,
-    refresh_token: data.refresh_token ?? refreshToken,
+    refresh_token: data.refresh_token,
     expires_at: Date.now() + data.expires_in * 1000,
     scope: data.scope,
     token_type: data.token_type,
-    clientId,
-    clientSecret,
-    existingFileId: null,
   };
 }
 
@@ -142,9 +158,13 @@ export function getSessionToken(request: Request): DriveSession | null {
   }
 }
 
-export async function getValidToken(token: DriveSession): Promise<DriveSession> {
+export async function getValidToken(
+  env: Record<string, unknown>,
+  token: DriveSession,
+): Promise<DriveSession> {
   if (Date.now() > token.expires_at - 30_000) {
-    return doRefresh(token.refresh_token, token.clientId, token.clientSecret);
+    const refreshed = await doRefresh(env, token.refresh_token);
+    return { ...token, ...refreshed } as DriveSession;
   }
   return token;
 }

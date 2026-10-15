@@ -2,51 +2,48 @@
  * Google OAuth callback.
  * Route: /api/google/callback
  * Query params: code, state
+ * Uses server-side credentials from environment variables.
  */
 import {
   corsHeaders,
-  DEFAULT_REDIRECT_URI,
   SESSION_COOKIE,
   exchangeCode,
   parseCookies,
   serializeCookie,
+  getRedirectUri,
 } from "../_lib";
 
-export const onRequestGet: ExportedHandler<{}> = async (ctx) => {
+export const onRequestGet: ExportedHandler<Env> = async (ctx) => {
   const url = new URL(ctx.request.url);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
   const cookies = parseCookies(ctx.request.headers.get("Cookie"));
   const storedState = cookies[`${SESSION_COOKIE}_state`];
-  const storedCreds = cookies[`${SESSION_COOKIE}_creds`];
 
-  if (!code || !state || state !== storedState || !storedCreds) {
+  if (!code || !state || state !== storedState) {
     return new Response("Invalid OAuth callback", { status: 400 });
   }
 
-  let creds: { clientId: string; clientSecret: string };
-  try {
-    creds = JSON.parse(atob(storedCreds));
-  } catch {
-    return new Response("Invalid credentials", { status: 400 });
-  }
+  const env = ctx.env as Record<string, unknown>;
+  const redirectUri = getRedirectUri(ctx.request);
 
   try {
-    const token = await exchangeCode(creds.clientId, creds.clientSecret, code, DEFAULT_REDIRECT_URI);
-    const sessionCookie = serializeCookie(SESSION_COOKIE, JSON.stringify(token), 60 * 60 * 24 * 30);
-    const clearCookies = [
-      serializeCookie(`${SESSION_COOKIE}_state`, "", 0),
-      serializeCookie(`${SESSION_COOKIE}_creds`, "", 0),
-    ].join(", ");
+    const session = await exchangeCode(env, code, redirectUri);
+    const sessionCookie = serializeCookie(SESSION_COOKIE, JSON.stringify(session), 60 * 60 * 24 * 30);
+    const clearCookie = serializeCookie(`${SESSION_COOKIE}_state`, "", 0);
 
     // Redirect to the app with success indicator
-    const redirectUrl = `https://gallivanter.pages.dev/?auth=success`;
+    const hostname = url.hostname === "localhost" || url.hostname === "127.0.0.1"
+      ? `${url.origin}`
+      : `https://${url.hostname}`;
+    const redirectUrl = `${hostname}/?auth=success`;
+
     return new Response(null, {
       status: 302,
       headers: {
         ...corsHeaders,
         Location: redirectUrl,
-        "Set-Cookie": `${sessionCookie}, ${clearCookies}`,
+        "Set-Cookie": `${sessionCookie}, ${clearCookie}`,
       },
     });
   } catch (e) {
@@ -58,6 +55,6 @@ export const onRequestGet: ExportedHandler<{}> = async (ctx) => {
   }
 };
 
-export const onRequestOptions: ExportedHandler<{}> = async () => {
+export const onRequestOptions: ExportedHandler = async () => {
   return new Response(null, { status: 204, headers: corsHeaders });
 };

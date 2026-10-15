@@ -6,7 +6,6 @@ import {
   autoSaveToDrive,
   loadWorkspace,
   saveWorkspace,
-  hasGoogleCreds,
 } from "./driveBackend";
 import type { Lead, Task } from "../types";
 import { initialLeads, initialTasks } from "../data";
@@ -18,7 +17,6 @@ interface AuthContextValue {
   authenticated: boolean;
   connectionStatus: ConnectionStatus;
   syncStatus: SyncStatus;
-  hasCreds: boolean;
   leads: Lead[];
   tasks: Task[];
   login: () => void;
@@ -41,7 +39,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [authenticated, setAuthenticated] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<ConnectionStatus>("checking");
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("idle");
-  const [hasCreds, setHasCreds] = useState(false);
   const [leads, setLeads] = useState<Lead[]>(initialLeads);
   const [tasks, setTasks] = useState<Task[]>(initialTasks);
 
@@ -66,15 +63,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
 
     void checkAuth();
-    setHasCreds(hasGoogleCreds());
   }, []);
 
   // Load data on mount
   useEffect(() => {
     const load = async () => {
       const result = await loadWorkspace();
-      setLeads(result.leads);
-      setTasks(result.tasks);
+      setLeads(() => result.leads);
+      setTasks(() => result.tasks);
       if (result.source === "cloudflare-drive") {
         setAuthenticated(true);
         setConnectionStatus("connected");
@@ -91,10 +87,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [leads, tasks, authenticated]);
 
   const login = () => {
-    if (!hasCreds) {
-      alert("Please configure your Google OAuth credentials in Settings first.");
-      return;
-    }
     startGoogleAuth();
   };
 
@@ -107,8 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const refreshFromDrive = async () => {
     setSyncStatus("syncing");
     const result = await loadWorkspace();
-    setLeads(result.leads);
-    setTasks(result.tasks);
+    setLeads(() => result.leads);
+    setTasks(() => result.tasks);
     setSyncStatus(result.source === "cloudflare-drive" ? "synced" : "idle");
   };
 
@@ -124,7 +116,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         authenticated,
         connectionStatus,
         syncStatus,
-        hasCreds,
         leads,
         tasks,
         login,

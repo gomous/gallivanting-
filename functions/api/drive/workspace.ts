@@ -1,6 +1,7 @@
 /**
  * Google Drive workspace read/write.
  * Route: /api/drive/workspace (GET reads, POST writes)
+ * Uses server-side credentials for token refresh.
  */
 import {
   corsHeaders,
@@ -15,7 +16,8 @@ import {
   DriveSession,
 } from "../_lib";
 
-export const onRequestGet: ExportedHandler<{}> = async (ctx) => {
+export const onRequestGet: ExportedHandler<Env> = async (ctx) => {
+  const env = ctx.env as Record<string, unknown>;
   const token = getSessionToken(ctx.request);
   if (!token) {
     return new Response(JSON.stringify({ error: "Not authenticated" }), {
@@ -25,7 +27,7 @@ export const onRequestGet: ExportedHandler<{}> = async (ctx) => {
   }
 
   try {
-    const valid = await getValidToken(token);
+    const valid = await getValidToken(env, token);
     const fileId = await findWorkspaceFile(valid.access_token, DEFAULT_FILE_NAME);
 
     if (!fileId) {
@@ -38,9 +40,8 @@ export const onRequestGet: ExportedHandler<{}> = async (ctx) => {
 
     // Update session if token was refreshed
     const headers: Record<string, string> = { ...corsHeaders, "Content-Type": "application/json" };
-    if (valid.expires_at !== token.expires_at) {
-      const updatedSession: DriveSession = { ...token, expires_at: valid.expires_at, access_token: valid.access_token };
-      headers["Set-Cookie"] = serializeCookie(SESSION_COOKIE, JSON.stringify(updatedSession), 60 * 60 * 24 * 30);
+    if (valid.expires_at !== token.expires_at || valid.access_token !== token.access_token) {
+      headers["Set-Cookie"] = serializeCookie(SESSION_COOKIE, JSON.stringify(valid), 60 * 60 * 24 * 30);
     }
 
     return new Response(JSON.stringify({ workspace: raw, updatedAt: new Date().toISOString() }), { headers });
@@ -53,7 +54,8 @@ export const onRequestGet: ExportedHandler<{}> = async (ctx) => {
   }
 };
 
-export const onRequestPost: ExportedHandler<{}> = async (ctx) => {
+export const onRequestPost: ExportedHandler<Env> = async (ctx) => {
+  const env = ctx.env as Record<string, unknown>;
   const token = getSessionToken(ctx.request);
   if (!token) {
     return new Response(JSON.stringify({ error: "Not authenticated" }), {
@@ -71,7 +73,7 @@ export const onRequestPost: ExportedHandler<{}> = async (ctx) => {
       });
     }
 
-    const valid = await getValidToken(token);
+    const valid = await getValidToken(env, token);
     const fileId = await writeWorkspace(valid.access_token, body.workspace, valid.existingFileId ?? null, DEFAULT_FILE_NAME);
 
     // Update session with fileId and any refreshed token data
@@ -90,6 +92,6 @@ export const onRequestPost: ExportedHandler<{}> = async (ctx) => {
   }
 };
 
-export const onRequestOptions: ExportedHandler<{}> = async () => {
+export const onRequestOptions: ExportedHandler = async () => {
   return new Response(null, { status: 204, headers: corsHeaders });
 };

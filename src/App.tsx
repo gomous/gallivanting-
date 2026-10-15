@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import { initialLeads, initialTasks } from "./data";
 import { useAuth } from "./cloudflare/AuthContext";
-import { SettingsDialog, useGoogleCreds } from "./cloudflare/SettingsDialog";
+import { SettingsDialog } from "./cloudflare/SettingsDialog";
 import { CrmModuleWorkspace, CrmSystemWorkspace, type CrmModuleKey, type CrmRoute } from "./crmModules";
 import {
   industries,
@@ -207,7 +207,7 @@ function routeFromLocation(): { activeNav: NavKey; route: CrmRoute | null } {
 
 function App() {
   const initialRoute = useMemo(routeFromLocation, []);
-  const { leads, tasks, setLeads, setTasks, authenticated, connectionStatus, syncStatus, hasCreds, login, logout, refreshFromDrive, saveNow } = useAuth();
+  const { leads, tasks, setLeads, setTasks, authenticated, connectionStatus, syncStatus, login, logout, refreshFromDrive, saveNow } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
 
   const [activeNav, setActiveNav] = useState<NavKey>(initialRoute.activeNav);
