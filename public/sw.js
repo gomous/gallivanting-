@@ -1,4 +1,4 @@
-const CACHE = 'gallivanter-v1';
+const CACHE = 'gallivanter-v2';
 const ASSETS = [
   '/',
   '/index.html',
@@ -6,6 +6,8 @@ const ASSETS = [
 ];
 
 self.addEventListener('install', e => {
+  // Force the waiting service worker to become active
+  self.skipWaiting();
   e.waitUntil(
     caches.open(CACHE).then(cache => cache.addAll(ASSETS))
   );
@@ -13,7 +15,7 @@ self.addEventListener('install', e => {
 
 self.addEventListener('fetch', e => {
   // Don't cache API requests - always go to network
-  if (e.request.url.includes('/auth/') || e.request.url.includes('/drive/')) {
+  if (e.request.url.includes('/auth/') || e.request.url.includes('/drive/') || e.request.url.includes('/api/')) {
     return;
   }
 
