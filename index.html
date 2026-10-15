@@ -13,6 +13,9 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Bail out any stale service worker before the app shell loads so a
+         normal refresh always returns fresh content (see public/sw-kill.js). -->
+    <script src="/sw-kill.js"></script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
