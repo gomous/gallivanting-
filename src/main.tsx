@@ -5,34 +5,12 @@ import { CrmProvider } from "./crm/store";
 import { AuthProvider } from "./cloudflare/AuthContext";
 import "./styles.css";
 
-// Register the service worker for PWA offline support
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/sw.js")
-      .then((reg) => {
-        // If a new SW is waiting, activate it immediately
-        if (reg.waiting) {
-          reg.waiting.postMessage({ type: "SKIP_WAITING" });
-        }
-        reg.addEventListener("updatefound", () => {
-          const newWorker = reg.installing;
-          if (newWorker) {
-            newWorker.addEventListener("statechange", () => {
-              if (newWorker.state === "installed" && navigator.serviceWorker.controller) {
-                newWorker.postMessage({ type: "SKIP_WAITING" });
-              }
-            });
-          }
-        });
-      })
-      .catch((err) => console.log("SW registration failed", err));
-  });
-  // Listen for activation messages
-  navigator.serviceWorker.addEventListener("controllerchange", () => {
-    window.location.reload();
-  });
-}
+// No service worker registration.
+// The SW previously cached the app shell and kept serving stale HTML after
+// every deploy (users saw old builds until a hard refresh). public/sw.js is
+// now a self-uninstalling worker: any browser that still has an old SW will
+// fetch it on navigation, wipe all caches, unregister, and reload once.
+// After that, no SW is installed and every load goes straight to the network.
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
