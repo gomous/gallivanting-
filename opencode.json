@@ -1,16 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
   "mcp": {
-    "rea": {
-      "type": "local",
-      "command": [
-        "C:/Program Files/nodejs/node.exe",
-        "C:/Users/mousu/AppData/Roaming/npm/node_modules/rea-agents/scripts/rea.mjs",
-        "mcp"
-      ],
-      "enabled": true,
-      "timeout": 60000
-    },
     "cloudflare-api": {
       "type": "remote",
       "url": "https://mcp.cloudflare.com/mcp",
@@ -27,10 +17,5 @@
         "Authorization": "Bearer {env:GITHUB_PERSONAL_ACCESS_TOKEN}"
       }
     }
-  },
-  "skills": {
-    "paths": [
-      "C:/Users/mousu/AppData/Roaming/npm/node_modules/rea-agents/skills"
-    ]
   }
 }

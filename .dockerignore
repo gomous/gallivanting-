@@ -1,0 +1,11 @@
+node_modules
+dist
+out
+.git
+.github
+.env
+.env.*
+!.env.example
+tmp_screenshots
+zoho-capture-scripts
+*.log

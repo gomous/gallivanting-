@@ -9,3 +9,8 @@ secrets_payload.json
 .env
 .env.*
 !.env.example
+.dev.vars
+.wrangler/
+worker/dist/
+*.pem
+*.key

@@ -44,7 +44,7 @@ The server should report `connected`. Verify with a harmless request such as lis
 The repository includes a launcher that resolves the global Windows OpenCode installation even when `opencode` is missing from the current PowerShell `PATH`:
 
 ```powershell
-Set-Location -LiteralPath 'C:\Users\mousu\OneDrive\Desktop\gallivanting'
+Set-Location -LiteralPath (git rev-parse --show-toplevel)
 .\scripts\start-mcp-opencode.ps1
 ```
 

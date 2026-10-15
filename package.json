@@ -4,6 +4,10 @@
   "description": "A focused desktop CRM workspace.",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "22.12.x",
+    "npm": ">=10 <11"
+  },
   "main": "out/main/main.js",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 5173 --strictPort",
@@ -13,6 +17,8 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "test": "node --experimental-strip-types --test src/crm/engine.test.ts src/backend/localBackend.test.ts src/moduleRecords.test.ts electron/persistence.test.ts",
+    "typecheck:functions": "tsc --project functions/tsconfig.json --noEmit",
+    "verify": "npm run typecheck && npm run typecheck:functions && npm test && npm run web:build",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -1,4 +1,4 @@
-import type { GoogleSession } from "../../src/cloudflare/driveBackend";
+import type { DriveSession } from "../../src/cloudflare/driveBackend";
 
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_DRIVE_BASE = "https://www.googleapis.com/drive/v3";
@@ -21,7 +21,7 @@ function buildAuthUrl(clientId: string, redirectUri: string, state: string): str
   return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 }
 
-async function exchangeCode(clientId: string, clientSecret: string, code: string, redirectUri: string): Promise<GoogleSession> {
+async function exchangeCode(clientId: string, clientSecret: string, code: string, redirectUri: string): Promise<DriveSession> {
   const params = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
@@ -61,7 +61,7 @@ async function exchangeCode(clientId: string, clientSecret: string, code: string
   };
 }
 
-async function doRefresh(refreshToken: string, clientId: string, clientSecret: string): Promise<GoogleSession> {
+async function doRefresh(refreshToken: string, clientId: string, clientSecret: string): Promise<DriveSession> {
   const params = new URLSearchParams({
     client_id: clientId,
     client_secret: clientSecret,
@@ -119,19 +119,19 @@ function serializeCookie(name: string, value: string, maxAge: number): string {
   return `${name}=${encodeURIComponent(value)}; Path=/; HttpOnly; Secure; SameSite=None; Max-Age=${maxAge}`;
 }
 
-function getSessionToken(request: Request): GoogleSession | null {
+function getSessionToken(request: Request): DriveSession | null {
   const cookies = parseCookies(request.headers.get("Cookie") || "");
   const raw = cookies[SESSION_COOKIE];
   if (!raw) return null;
 
   try {
-    return JSON.parse(raw) as GoogleSession;
+    return JSON.parse(raw) as DriveSession;
   } catch {
     return null;
   }
 }
 
-async function getValidToken(token: GoogleSession): Promise<GoogleSession> {
+async function getValidToken(token: DriveSession): Promise<DriveSession> {
   if (Date.now() > token.expires_at - 30_000) {
     return doRefresh(token.refresh_token, token.clientId, token.clientSecret);
   }
@@ -227,10 +227,9 @@ const corsHeaders = {
 
 // === Google OAuth flow ===
 
-export const GET = async (request: Request) => {
+const handleGet = async (request: Request) => {
   const url = new URL(request.url);
   const path = url.pathname;
-  const origin = new URL(request.url).origin;
 
   // OAuth start
   if (path === "/api/google") {
@@ -245,14 +244,14 @@ export const GET = async (request: Request) => {
     }
 
     const state = crypto.randomUUID();
-    const redirectUri = encodeURIComponent(DEFAULT_REDIRECT_URI);
     const authUrl = buildAuthUrl(clientId, DEFAULT_REDIRECT_URI, state);
 
     const cookie = serializeCookie(`${SESSION_COOKIE}_creds`, btoa(JSON.stringify({ clientId, clientSecret })), 300);
     const stateCookie = serializeCookie(`${SESSION_COOKIE}_state`, state, 300);
 
-    return Response.redirect(authUrl, 302, {
-      headers: { ...corsHeaders, "Set-Cookie": `${cookie}, ${stateCookie}` },
+    return new Response(null, {
+      status: 302,
+      headers: { ...corsHeaders, Location: authUrl, "Set-Cookie": `${cookie}, ${stateCookie}` },
     });
   }
 
@@ -283,9 +282,11 @@ export const GET = async (request: Request) => {
     ].join(", ");
 
     const redirectUrl = `https://${url.hostname}/?auth=success`;
-    return Response.redirect(redirectUrl, 302, {
+    return new Response(null, {
+      status: 302,
       headers: {
         ...corsHeaders,
+        Location: redirectUrl,
         "Set-Cookie": `${sessionCookie}, ${clearCookies}`,
       },
     });
@@ -343,7 +344,7 @@ export const GET = async (request: Request) => {
   });
 };
 
-export const POST = async (request: Request) => {
+const handlePost = async (request: Request) => {
   const url = new URL(request.url);
   const path = url.pathname;
 
@@ -388,3 +389,7 @@ export const POST = async (request: Request) => {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 };
+
+export const onRequestGet = async ({ request }: { request: Request }) => handleGet(request);
+export const onRequestPost = async ({ request }: { request: Request }) => handlePost(request);
+export const onRequestOptions = async () => new Response(null, { status: 204, headers: corsHeaders });
