@@ -10,12 +10,4 @@ declare global {
       backend?: BackendDesktopApi;
     };
   }
-
-  interface ImportMetaEnv {
-    readonly VITE_GOOGLE_CLIENT_ID: string;
-    readonly VITE_GOOGLE_CLIENT_SECRET: string;
-  }
 }
-
-declare const __GOOGLE_CLIENT_ID__: string;
-declare const __GOOGLE_CLIENT_SECRET__: string;
