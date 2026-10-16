@@ -1,4 +1,5 @@
-/** Local module records; these operations do not call the Zoho service. */
+/** Module records. Saved locally for instant UI and pushed to the Gallivanter server (D1). */
+import { queueModule } from "./serverSync";
 export type ModuleNote = { id: string; title: string; text: string; at: string };
 export type ModuleEvent = { id: string; title: string; at: string; detail: string };
 export type ModuleRecord = {
@@ -51,6 +52,7 @@ export function persistModuleRecords(storage: Storage, module: string, records: 
   const text = JSON.stringify(records);
   parseModuleRecords(text);
   storage.setItem(moduleCollectionKey(module), text);
+  queueModule(module, records);
 }
 
 export function recordEvent(record: ModuleRecord, title: string, detail: string, at = new Date().toISOString()): ModuleRecord {

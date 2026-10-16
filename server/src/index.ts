@@ -3,6 +3,8 @@ import { currentUser, finishGoogleLogin, logout, startGoogleLogin, SESSION_COOKI
 import { invokeTool, toolManifest, type Role, type ToolContext } from "./registry.ts";
 import { AppError, newId, nowIso, randomToken, sha256, type Env } from "./util.ts";
 import { syncAllSheets } from "./sheets.ts";
+import { personalWorkspace, snapshot, syncCollection, type LegacyRecord } from "./legacy.ts";
+import { apiKeys, chat, listModels, type AiEnv, type ChatMessage } from "./ai.ts";
 // Importing the tool modules registers every tool.
 import "./tools/records.ts";
 import "./tools/activities.ts";
@@ -26,6 +28,10 @@ app.get("/api/health", (c) => c.json({ status: "ok", time: nowIso() }));
 // ---------- auth ----------
 app.get("/api/auth/google", (c) => startGoogleLogin(c));
 app.get("/api/auth/google/callback", (c) => finishGoogleLogin(c));
+// Original Pages paths (registered in Google Console).
+app.get("/api/google", (c) => startGoogleLogin(c));
+app.get("/api/google/callback", (c) => finishGoogleLogin(c));
+app.get("/api/auth/status", async (c) => c.json({ authenticated: Boolean(await currentUser(c.env, c.req.header("Cookie"))) }));
 app.post("/api/auth/logout", (c) => logout(c));
 
 /** Local development only (DEV_LOGIN=1 in .dev.vars): sign in as a test user without Google. */
@@ -143,10 +149,43 @@ app.post("/api/w/:ws/sync-sheet", async (c) => {
   return c.json(result);
 });
 
+// ---------- original UI (gallivanter.pages.dev) ----------
+app.use("/api/legacy/*", requireUser);
+app.use("/api/ai/*", requireUser);
+
+async function legacyContext(c: Context<App>, source: ToolContext["source"] = "ui"): Promise<ToolContext> {
+  const user = c.get("user");
+  const requested = c.req.query("ws");
+  const wsId = requested || (await personalWorkspace(c.env, user));
+  return workspaceContext(c, wsId, source);
+}
+
+app.get("/api/legacy/snapshot", async (c) => c.json(await snapshot(await legacyContext(c))));
+
+app.post("/api/legacy/sync/:module", async (c) => {
+  const ctx = await legacyContext(c);
+  const body = await c.req.json<{ upserts?: LegacyRecord[]; deletes?: string[] }>().catch(() => ({} as { upserts?: LegacyRecord[]; deletes?: string[] }));
+  return c.json(await syncCollection(ctx, decodeURIComponent(c.req.param("module")), body.upserts ?? [], body.deletes ?? []));
+});
+
+// ---------- native AI assistant ----------
+app.get("/api/ai/status", async (c) => {
+  const env = c.env as unknown as AiEnv;
+  return c.json({ keys: apiKeys(env).length, baseUrl: env.AI_BASE_URL || "https://vyceai.com/v1", model: env.AI_MODEL || "deepseek-v4.1-flash", fallbackModel: env.AI_FALLBACK_MODEL || null });
+});
+app.get("/api/ai/models", async (c) => c.json(await listModels(c.env as unknown as AiEnv)));
+app.post("/api/ai/chat", async (c) => {
+  const ctx = await legacyContext(c, "ai");
+  const body = await c.req.json<{ messages: ChatMessage[]; approvals?: { id: string; approved: boolean }[]; model?: string }>();
+  return c.json(await chat(c.env as unknown as AiEnv, ctx, c.get("user").name || c.get("user").email, body));
+});
+
 app.all("/api/*", (c) => c.json({ error: { code: "not_found", message: "Unknown API route" } }, 404));
 
 // Everything else is the React app (static assets with SPA fallback).
 app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
+
+export { app };
 
 export default {
   fetch: app.fetch,

@@ -124,9 +124,10 @@ defineTool({
     values,
     tags: z.array(z.string()).optional(),
     ownerId: z.string().optional().describe("User id of a workspace member; defaults to you"),
+    id: z.string().optional().describe("Optional client-chosen record id (apps only; AI should omit)"),
   }),
-  async run(ctx, { module, values: v, tags, ownerId }) {
-    return createRecord(ctx, module, v, { tags, ownerId });
+  async run(ctx, { module, values: v, tags, ownerId, id }) {
+    return createRecord(ctx, module, v, { tags, ownerId, id });
   },
 });
 

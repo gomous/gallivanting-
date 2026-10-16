@@ -1,0 +1,20 @@
+# Cloudflare Pages project: gallivanter.pages.dev
+# Static site = the original Gallivanter UI; /api/* = functions/api/[[path]].ts
+name = "gallivanter"
+pages_build_output_dir = "./web-dist"
+compatibility_date = "2026-09-15"
+compatibility_flags = ["nodejs_compat"]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "gallivanter"
+database_id = "7db6a35f-b3d4-44f2-845e-fa1648e0398b"
+
+[vars]
+AI_BASE_URL = "https://vyceai.com/v1"
+
+# Secrets (Cloudflare dashboard → Workers & Pages → gallivanter → Settings →
+# Variables and Secrets, or `wrangler pages secret put NAME --project-name gallivanter`):
+#   GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, TOKEN_KEY
+#   VYCE_API_KEYS  (comma separated)  and/or  VYCE_API_KEY_1, VYCE_API_KEY_2, ...
+#   AI_MODEL / AI_FALLBACK_MODEL (optional, exact model ids from /api/ai/models)

@@ -106,6 +106,17 @@ async function assertOwner(ctx: ToolContext, ownerId: string | undefined): Promi
   return ownerId;
 }
 
+/** Minimal checks for the original app UI, which validates its own forms and uses free-text legacy fields. */
+function lenientErrors(values: Values): string[] {
+  const errors: string[] = [];
+  for (const [k, v] of Object.entries(values)) {
+    if (["__proto__", "prototype", "constructor"].includes(k)) errors.push(` is not a permitted field name.`);
+    if (k.length > 64) errors.push(`Field name … is too long.`);
+    if (typeof v !== "string" || v.length > 20000) errors.push(` must be text under 20,000 characters.`);
+  }
+  return errors;
+}
+
 export function timelineStmt(
   ctx: ToolContext,
   recordId: string | null,
@@ -131,14 +142,16 @@ export async function createRecord(
   ctx: ToolContext,
   module: ModuleKey,
   rawValues: Record<string, unknown>,
-  opts: { tags?: string[]; ownerId?: string; timelineTitle?: string } = {},
+  opts: { tags?: string[]; ownerId?: string; timelineTitle?: string; id?: string; lenient?: boolean } = {},
 ): Promise<RecordDto> {
   const values = cleanValues(module, rawValues);
-  const errors = validateValues(module, values);
+  if (opts.id !== undefined && !/^[A-Za-z0-9_-]{6,64}$/.test(opts.id)) throw new AppError("invalid", "Record id must be 6-64 letters, digits, - or _.");
+  const errors = opts.lenient ? lenientErrors(values) : validateValues(module, values);
   if (errors.length) throw new AppError("invalid", errors.join(" "), { errors });
-  await assertLookups(ctx, module, values);
+  if (!opts.lenient) await assertLookups(ctx, module, values);
   const ownerId = (await assertOwner(ctx, opts.ownerId)) ?? ctx.userId;
-  const id = newId(moduleDefs[module].singular.toLowerCase().replace(/\s+/g, ""));
+  const id = opts.id ?? newId(moduleDefs[module].singular.toLowerCase().replace(/\s+/g, ""));
+  if (opts.id && (await ctx.db.prepare("SELECT 1 FROM records WHERE id = ?").bind(opts.id).first())) throw new AppError("conflict", `A record with id ${opts.id} already exists.`);
   const title = computeTitle(module, values, id);
   const tags = [...new Set((opts.tags ?? []).map((t) => t.trim()).filter(Boolean))];
   const now = nowIso();
@@ -158,7 +171,7 @@ export async function updateRecord(
   ctx: ToolContext,
   id: string,
   patch: Record<string, unknown>,
-  opts: { expectedVersion?: number; tags?: string[]; ownerId?: string; timelineTitle?: string } = {},
+  opts: { expectedVersion?: number; tags?: string[]; ownerId?: string; timelineTitle?: string; lenient?: boolean } = {},
 ): Promise<RecordDto> {
   const row = await loadRow(ctx, id);
   if (opts.expectedVersion !== undefined && opts.expectedVersion !== row.version) {
@@ -171,9 +184,9 @@ export async function updateRecord(
     if (raw === null || raw === "") delete merged[key];
     else merged[key] = typeof raw === "string" ? raw : String(raw);
   }
-  const errors = validateValues(module, merged);
+  const errors = opts.lenient ? lenientErrors(merged) : validateValues(module, merged);
   if (errors.length) throw new AppError("invalid", errors.join(" "), { errors });
-  await assertLookups(ctx, module, merged);
+  if (!opts.lenient) await assertLookups(ctx, module, merged);
   const ownerId = opts.ownerId !== undefined ? await assertOwner(ctx, opts.ownerId) : row.owner_id;
   const tags = opts.tags ? [...new Set(opts.tags.map((t) => t.trim()).filter(Boolean))] : parseJson<string[]>(row.tags, []);
   const title = computeTitle(module, merged, id);

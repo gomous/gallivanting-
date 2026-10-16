@@ -34,13 +34,14 @@ function readCookie(header: string | null | undefined, name: string): string | u
 }
 
 const isSecure = (url: URL) => url.protocol === "https:";
-const redirectUri = (url: URL) => `${url.origin}/api/auth/google/callback`;
+// Same path the original Pages app registered in Google Console, so no console change is needed.
+const redirectUri = (url: URL) => `${url.origin}/api/google/callback`;
 
 /** Step 1: redirect to Google. `?consent=1` forces the consent screen (needed to obtain a refresh token). */
 export function startGoogleLogin(c: Ctx): Response {
   const url = new URL(c.req.url);
-  const next = url.searchParams.get("next") ?? "/app";
-  const state = `${randomToken(16)}.${encodeURIComponent(next.startsWith("/") ? next : "/app")}`;
+  const next = url.searchParams.get("next") ?? "/";
+  const state = `${randomToken(16)}.${encodeURIComponent(next.startsWith("/") && !next.startsWith("//") ? next : "/")}`;
   const params = new URLSearchParams({
     client_id: c.env.GOOGLE_CLIENT_ID,
     redirect_uri: redirectUri(url),
@@ -79,7 +80,7 @@ export async function finishGoogleLogin(c: Ctx): Promise<Response> {
   const stored = readCookie(c.req.header("Cookie"), STATE_COOKIE);
   if (url.searchParams.get("error")) return c.redirect(`/?login_error=${encodeURIComponent(url.searchParams.get("error")!)}`);
   if (!code || !state || state !== stored) return c.redirect("/?login_error=state");
-  const next = decodeURIComponent(state.split(".")[1] ?? "%2Fapp");
+  const next = decodeURIComponent(state.split(".")[1] ?? "%2F");
 
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",

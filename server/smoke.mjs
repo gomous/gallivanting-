@@ -110,5 +110,29 @@ ok(hist.length >= 4 && hist.every((h) => h.source === "ui"), "audit trail record
 const changes = (await tool(alice, "changes_since", { since: "" })).body.result;
 ok(changes.records.length >= 10, `changes_since returns ${changes.records.length} records`);
 
+
+console.log("Original UI sync (/api/legacy)");
+const carol = await login(`carol-${stamp}@example.com`, "Carol");
+const snap0 = (await carol.call("GET", "/api/legacy/snapshot")).body;
+ok(snap0.workspaceId && snap0.initialized.length === 0, "snapshot auto-creates a personal workspace", snap0);
+const up = (await carol.call("POST", "/api/legacy/sync/Contacts", { upserts: [
+  { id: `c-${stamp}-1`, values: { firstName: "Kris", lastName: "Marrier", accountName: "King", owner: "You" }, extra: { notes: [{ id: "n1", title: "Note", text: "hi", at: "2026-10-16T00:00:00Z" }], timeline: [] } },
+  { id: `c-${stamp}-2`, values: { firstName: "Sage", lastName: "Wieser" } },
+] })).body;
+ok(up.created === 2 && up.errors.length === 0, "legacy upsert creates records (free-text owner allowed)", up);
+const up2 = (await carol.call("POST", "/api/legacy/sync/Contacts", { upserts: [{ id: `c-${stamp}-1`, values: { firstName: "Kris", lastName: "Marrier" } }], deletes: [`c-${stamp}-2`] })).body;
+ok(up2.updated === 1 && up2.deleted === 1, "legacy update + delete", up2);
+const snap1 = (await carol.call("GET", "/api/legacy/snapshot")).body;
+const kris = snap1.modules.Contacts.find((r) => r.id === `c-${stamp}-1`);
+ok(snap1.initialized.includes("Contacts") && kris && !kris.values.accountName && kris.extra.notes.length === 1, "snapshot reflects changes, removed keys cleared, extra kept", kris);
+ok(snap1.modules.Contacts.find((r) => r.id === `c-${stamp}-2`)?.deletedAt, "deleted record is in recycle bin");
+const viaTool = (await carol.call("POST", `/api/w/${snap1.workspaceId}/tools/search_records`, { module: "Contacts", query: "kris" })).body.result;
+ok(viaTool.total === 1, "records saved by the original UI are visible to AI/MCP tools");
+const clash = (await carol.call("POST", "/api/legacy/sync/Contacts", { upserts: [{ id: lead.id, values: { lastName: "x" } }] })).body;
+ok(clash.errors.length === 1, "cannot overwrite another workspace's record id", clash);
+const ai = (await carol.call("GET", "/api/ai/status")).body;
+ok(typeof ai.keys === "number" && ai.baseUrl.includes("vyceai"), "AI status endpoint", ai);
+const legacyStatus = (await fetch(`${BASE}/api/auth/status`)).status;
+ok(legacyStatus === 200, "legacy /api/auth/status responds");
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

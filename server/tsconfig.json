@@ -11,5 +11,5 @@
     "isolatedModules": true,
     "types": ["@cloudflare/workers-types"]
   },
-  "include": ["src", "../src/crm/model.ts", "../src/crm/schema.ts", "../src/crm/engine.ts"]
+  "include": ["src", "../functions", "../src/crm/model.ts", "../src/crm/schema.ts", "../src/crm/engine.ts"]
 }
