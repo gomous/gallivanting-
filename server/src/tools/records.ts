@@ -214,3 +214,18 @@ defineTool({
 });
 
 export { assertModule };
+
+defineTool({
+  name: "resolve_titles",
+  title: "Resolve record titles",
+  description: "Get the display title and module for up to 200 record ids (e.g. to show names for lookup fields).",
+  authority: "read",
+  input: z.object({ ids: z.array(z.string()).min(1).max(200) }),
+  async run(ctx, { ids }) {
+    const rows = await ctx.db
+      .prepare(`SELECT id, title FROM records WHERE workspace_id = ? AND id IN (${ids.map(() => "?").join(",")})`)
+      .bind(ctx.workspaceId, ...ids)
+      .all<{ id: string; title: string }>();
+    return Object.fromEntries(rows.results.map((r) => [r.id, r.title]));
+  },
+});

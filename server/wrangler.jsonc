@@ -7,7 +7,7 @@
   "compatibility_flags": ["nodejs_compat"],
   "account_id": "f0a40f67e87b4b3ca50d0680cc4f1ab8",
   "assets": {
-    "directory": "../dist",
+    "directory": "../web-dist",
     "binding": "ASSETS",
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*", "/mcp", "/mcp/*", "/oauth/*", "/.well-known/*"]

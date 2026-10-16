@@ -3,12 +3,12 @@
  * Design language: warm cream background, coral accent, deep teal,
  * DM Sans body + DM Serif Display headings.
  */
-import { useAuth } from "./AuthContext";
+// Sign-in goes through the Worker; returning users skip straight to the app.
 import "./landing.css";
 
 export function LandingPage() {
-  const { login, connectionStatus } = useAuth();
-  const checking = connectionStatus === "checking";
+  const login = () => { window.location.href = "/api/auth/google?next=/app"; };
+  const checking = false;
 
   return (
     <div className="lp-page">
