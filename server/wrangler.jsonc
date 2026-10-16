@@ -16,8 +16,7 @@
     {
       "binding": "DB",
       "database_name": "gallivanter",
-      // Replaced with the real id after `wrangler d1 create gallivanter`.
-      "database_id": "00000000-0000-0000-0000-000000000000",
+      "database_id": "7db6a35f-b3d4-44f2-845e-fa1648e0398b",
       "migrations_dir": "migrations"
     }
   ],
