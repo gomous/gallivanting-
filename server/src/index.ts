@@ -171,7 +171,7 @@ app.post("/api/legacy/sync/:module", async (c) => {
 // ---------- native AI assistant ----------
 app.get("/api/ai/status", async (c) => {
   const env = c.env as unknown as AiEnv;
-  return c.json({ keys: apiKeys(env).length, baseUrl: env.AI_BASE_URL || "https://vyceai.com/v1", model: env.AI_MODEL || "deepseek-v4.1-flash", fallbackModel: env.AI_FALLBACK_MODEL || null });
+  return c.json({ keys: apiKeys(env).length, baseUrl: env.AI_BASE_URL || "https://vyceai.com/v1", model: env.AI_MODEL || "deepseek-v4.1", fallbackModel: env.AI_FALLBACK_MODEL || null });
 });
 app.get("/api/ai/models", async (c) => c.json(await listModels(c.env as unknown as AiEnv)));
 app.post("/api/ai/chat", async (c) => {

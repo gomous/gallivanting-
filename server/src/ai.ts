@@ -162,7 +162,7 @@ export async function chat(
   userName: string,
   input: { messages: ChatMessage[]; approvals?: { id: string; approved: boolean }[]; model?: string },
 ): Promise<{ messages: ChatMessage[]; pending: PendingAction[]; changed: boolean; model: string }> {
-  const model = input.model || env.AI_MODEL || "deepseek-v4.1-flash";
+  const model = input.model || env.AI_MODEL || "deepseek-v4.1";
   const transcript: ChatMessage[] = (input.messages ?? []).filter((m) => m.role !== "system").slice(-60);
   if (!transcript.length) throw new AppError("invalid", "Send at least one message.");
   const tools = aiTools(ctx);
