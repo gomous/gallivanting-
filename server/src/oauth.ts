@@ -324,7 +324,20 @@ export interface TokenPrincipal {
 export async function bearerPrincipal(env: Env, authHeader: string | null | undefined, mcpUrl: string): Promise<TokenPrincipal | null> {
   const token = readBearer(authHeader);
   if (!token) return null;
-  const claims = await verifyJwt(env, token, mcpUrl);
+  // Accept the token if its audience matches either the canonical origin or the
+  // request's own origin. This keeps working across host changes (tokens issued
+  // while PUBLIC_ORIGIN pointed elsewhere validate against the request host).
+  const aliases = new Set<string>([mcpUrl]);
+  const slashMcp = mcpUrl.replace(/\/$/, '');
+  aliases.add(slashMcp);
+  if (slashMcp.endsWith('/mcp')) aliases.add(slashMcp.slice(0, -4));
+  let claims = await verifyJwt(env, token, mcpUrl);
+  if (!claims) {
+    for (const a of aliases) {
+      const c2 = await verifyJwt(env, token, a);
+      if (c2) { claims = c2; break; }
+    }
+  }
   if (!claims) return null;
   const userId = claims.sub as string;
   const workspaceId = claims.ws as string;
