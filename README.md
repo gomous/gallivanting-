@@ -1,6 +1,6 @@
 # Gallivanter
 
-Gallivanter is a local-first CRM workspace with a responsive web/PWA surface and an Electron desktop surface. The web build is the deployable application used by Cloudflare Pages; the Electron build produces desktop source bundles.
+Gallivanter is a local-first CRM workspace with a responsive web/PWA surface and an Electron desktop surface. The web build is the deployable application used by Cloudflare Pages; the Electron build produces desktop source bundles...
 
 ## Requirements
 
