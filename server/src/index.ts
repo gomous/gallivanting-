@@ -205,15 +205,6 @@ export { app };
 
 export default {
   fetch(req, env, ctx) {
-    const url = new URL(req.url);
-    const canonical = publicOrigin(env, url);
-    // Redirect the account subdomain to the canonical Workers origin so there is a
-    // single host for the app, REST API, MCP and OAuth metadata. (The Google and
-    // OAuth flows must always land on the registered redirect_uri host.)
-    if (url.origin !== canonical && url.hostname.endsWith('.workers.dev')) {
-      const target = canonical + url.pathname + url.search;
-      return new Response(null, { status: 301, headers: { Location: target, 'Cache-Control': 'no-store' } });
-    }
     return app.fetch(req, env, ctx);
   },
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {

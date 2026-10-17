@@ -22,7 +22,7 @@
   ],
   "triggers": { "crons": ["*/5 * * * *"] },
   "vars": {
-    "PUBLIC_ORIGIN": "https://gallivanter.workers.dev",
+    "PUBLIC_ORIGIN": "https://gallivanter.mousumg911.workers.dev",
     "AI_BASE_URL": "https://vyceai.com/v1",
     "AI_MODEL": "deepseek-v4.1",
     "AI_FALLBACK_MODEL": "agnes-3.0-flash"
