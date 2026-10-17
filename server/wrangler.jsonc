@@ -21,6 +21,12 @@
     }
   ],
   "triggers": { "crons": ["*/5 * * * *"] },
+  "vars": {
+    "PUBLIC_ORIGIN": "https://gallivanter.workers.dev",
+    "AI_BASE_URL": "https://vyceai.com/v1",
+    "AI_MODEL": "deepseek-v4.1",
+    "AI_FALLBACK_MODEL": "agnes-3.0-flash"
+  },
   "observability": { "enabled": true }
   // Secrets (wrangler secret put): GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET,
   // TOKEN_KEY (base64 32 bytes), DEEPSEEK_API_KEY

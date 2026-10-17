@@ -37,13 +37,6 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: d1 migrations apply gallivanter --remote -c server/wrangler.jsonc
 
-      # gallivanter.pages.dev: original UI + /api via functions/api/[[path]].ts (bindings from wrangler.toml)
-      - name: Deploy Pages (site + API)
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy web-dist --project-name=gallivanter --branch=main
 
       # Worker: runs the 5-minute Google Sheets sync (Pages has no cron triggers)
       - name: Deploy sync worker
@@ -52,21 +45,3 @@ jobs:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy -c server/wrangler.jsonc
-
-      - name: Clean up old Pages deployments
-        env:
-          ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: |
-          set -e
-          LATEST=$(curl -s -H "Authorization: Bearer $API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects/gallivanter?include=latest_deployment" \
-            | jq -r '.result.latest_deployment.id')
-          echo "Keeping latest deployment: $LATEST"
-          curl -s -H "Authorization: Bearer $API_TOKEN" \
-            "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects/gallivanter/deployments?per_page=100" \
-            | jq -r --arg latest "$LATEST" '.result[] | select(.id != $latest) | .id' \
-            | while read -r DEPLOY_ID; do
-                curl -s -o /dev/null -X DELETE -H "Authorization: Bearer $API_TOKEN" \
-                  "https://api.cloudflare.com/client/v4/accounts/$ACCOUNT_ID/pages/projects/gallivanter/deployments/$DEPLOY_ID?force=true"
-              done

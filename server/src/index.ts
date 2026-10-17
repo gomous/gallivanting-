@@ -1,10 +1,12 @@
 import { Hono, type Context, type Next } from "hono";
 import { currentUser, finishGoogleLogin, logout, startGoogleLogin, SESSION_COOKIE, type SessionUser } from "./auth.ts";
 import { invokeTool, toolManifest, type Role, type ToolContext } from "./registry.ts";
-import { AppError, newId, nowIso, randomToken, sha256, type Env } from "./util.ts";
+import { AppError, newId, nowIso, publicOrigin, randomToken, sha256, type Env } from "./util.ts";
 import { syncAllSheets } from "./sheets.ts";
 import { personalWorkspace, snapshot, syncCollection, type LegacyRecord } from "./legacy.ts";
 import { apiKeys, chat, listModels, type AiEnv, type ChatMessage } from "./ai.ts";
+import { handleMcp } from "./mcp.ts";
+import { authServerMetadata, authorize, clientRegister, resourceMetadata, token } from "./oauth.ts";
 // Importing the tool modules registers every tool.
 import "./tools/records.ts";
 import "./tools/activities.ts";
@@ -182,13 +184,38 @@ app.post("/api/ai/chat", async (c) => {
 
 app.all("/api/*", (c) => c.json({ error: { code: "not_found", message: "Unknown API route" } }, 404));
 
+// ---------- MCP (Model Context Protocol) endpoint for Claude & app connectors ----------
+// Streamable HTTP: POST JSON-RPC. Run before the SPA catch-all so /mcp* is served here.
+app.all("/mcp", async (c) => handleMcp(c as never));
+app.all("/mcp/*", async (c) => handleMcp(c as never));
+
+// ---------- OAuth authorization server for the MCP endpoint ----------
+// Discovery metadata (RFC 9728 + RFC 8414) and the dynamic registration,
+// authorization, and token endpoints. Claude finds these via the 401 challenge.
+app.get("/.well-known/oauth-protected-resource", (c) => resourceMetadata(c as never));
+app.get("/.well-known/oauth-authorization-server", (c) => authServerMetadata(c as never));
+app.post("/oauth/register", (c) => clientRegister(c as never));
+app.get("/oauth/authorize", (c) => authorize(c as never));
+app.post("/oauth/token", (c) => token(c as never));
+
 // Everything else is the React app (static assets with SPA fallback).
 app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));
 
 export { app };
 
 export default {
-  fetch: app.fetch,
+  fetch(req, env, ctx) {
+    const url = new URL(req.url);
+    const canonical = publicOrigin(env, url);
+    // Redirect the account subdomain to the canonical Workers origin so there is a
+    // single host for the app, REST API, MCP and OAuth metadata. (The Google and
+    // OAuth flows must always land on the registered redirect_uri host.)
+    if (url.origin !== canonical && url.hostname.endsWith('.workers.dev')) {
+      const target = canonical + url.pathname + url.search;
+      return new Response(null, { status: 301, headers: { Location: target, 'Cache-Control': 'no-store' } });
+    }
+    return app.fetch(req, env, ctx);
+  },
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(syncAllSheets(env).then((r) => console.log("sheet sync", JSON.stringify(r))));
   },

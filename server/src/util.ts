@@ -6,9 +6,21 @@ export interface Env {
   /** base64-encoded 32-byte key used to encrypt Google refresh tokens */
   TOKEN_KEY: string;
   DEEPSEEK_API_KEY?: string;
+  /** Canonical public origin (e.g. https://gallivanter.pages.dev). Authentication and
+   * OAuth metadata always advertise this, so Google redirect URIs and JWT audiences
+   * stay stable no matter which Worker host serves the request. */
+  PUBLIC_ORIGIN?: string;
 }
 
 export const nowIso = (): string => new Date().toISOString();
+/** Canonical origin for auth and OAuth metadata. Prefers the configured PUBLIC_ORIGIN
+ * (so Google redirect URIs and JWT audiences are stable across Worker hosts), falling
+ * back to the request's own origin. Only https is accepted. */
+export function publicOrigin(env: Env, url: URL): string {
+  const p = (env.PUBLIC_ORIGIN ?? '').trim().replace(/\$/g, '');
+  return p && /^https:\/\//.test(p) ? p : url.origin;
+}
+
 
 /** Sortable, URL-safe id: time prefix + random suffix, e.g. "rec_lx3k9a_7f2c9e1b4d". */
 export function newId(prefix: string): string {

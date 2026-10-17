@@ -6,7 +6,7 @@
 import type { Context } from "hono";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Ctx = Context<{ Bindings: Env; Variables: any }>;
-import { AppError, decrypt, encrypt, newId, nowIso, randomToken, sha256, type Env } from "./util.ts";
+import { AppError, decrypt, encrypt, newId, nowIso, publicOrigin, randomToken, sha256, type Env } from "./util.ts";
 
 export const SESSION_COOKIE = "gv_session";
 const STATE_COOKIE = "gv_oauth_state";
@@ -35,7 +35,7 @@ function readCookie(header: string | null | undefined, name: string): string | u
 
 const isSecure = (url: URL) => url.protocol === "https:";
 // Same path the original Pages app registered in Google Console, so no console change is needed.
-const redirectUri = (url: URL) => `${url.origin}/api/google/callback`;
+const redirectUri = (c: Ctx, url: URL) => `${publicOrigin(c.env, url)}/api/google/callback`;
 
 /** Step 1: redirect to Google. `?consent=1` forces the consent screen (needed to obtain a refresh token). */
 export function startGoogleLogin(c: Ctx): Response {
@@ -44,7 +44,7 @@ export function startGoogleLogin(c: Ctx): Response {
   const state = `${randomToken(16)}.${encodeURIComponent(next.startsWith("/") && !next.startsWith("//") ? next : "/")}`;
   const params = new URLSearchParams({
     client_id: c.env.GOOGLE_CLIENT_ID,
-    redirect_uri: redirectUri(url),
+    redirect_uri: redirectUri(c, url),
     response_type: "code",
     scope: GOOGLE_SCOPES.join(" "),
     access_type: "offline",
@@ -89,7 +89,7 @@ export async function finishGoogleLogin(c: Ctx): Promise<Response> {
       code,
       client_id: c.env.GOOGLE_CLIENT_ID,
       client_secret: c.env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: redirectUri(url),
+      redirect_uri: redirectUri(c, url),
       grant_type: "authorization_code",
     }),
   });
