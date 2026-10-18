@@ -12,9 +12,26 @@ export interface ContentPart {
   content: string | object;
 }
 
+/** Chart/table types that our renderer supports. */
+const CHART_TYPES = ['bar', 'pie', 'table', 'line'] as const;
+
 /** Check if an object is a chart/table config. */
 function isChartConfig(obj: any): boolean {
-  return obj && typeof obj === 'object' && (obj.type === 'bar' || obj.type === 'pie' || obj.type === 'table');
+  return obj && typeof obj === 'object' && CHART_TYPES.includes(obj.type);
+}
+
+/** Extract a chart spec from various wrapper formats. */
+function extractChartSpec(obj: any): any {
+  if (!obj || typeof obj !== 'object') return null;
+  // Direct spec (from make_bar_chart etc. — their html field is parsed by caller)
+  if (obj.type && CHART_TYPES.includes(obj.type)) return obj;
+  // render_visual format: { spec: {...}, text, summary, empty }
+  if (obj.spec && isChartConfig(obj.spec)) return obj.spec;
+  // Legacy: { html: "<json string>", ... } — caller should pass the parsed html
+  if (typeof obj.html === 'string') {
+    try { const inner = JSON.parse(obj.html); return extractChartSpec(inner) ?? (isChartConfig(inner) ? inner : null); } catch { }
+  }
+  return null;
 }
 
 /** Parse content into parts - detects chart JSON blocks. */
@@ -22,26 +39,26 @@ export function parseContent(content: string | null): ContentPart[] {
   if (!content) return [{ type: 'text', content: '' }];
 
   // First, try to find a ```json block containing chart data
-  const jsonBlock = content.match(/```json\s*\n([\s\S]*?)\n```/);
+  const jsonBlock = content.match(/```json\s*\\n([\\s\\S]*?)\\n```/);
   if (jsonBlock) {
     try {
       const parsed = JSON.parse(jsonBlock[1]);
-      if (isChartConfig(parsed)) {
+      const spec = extractChartSpec(parsed);
+      if (spec) {
         const textBefore = content.slice(0, jsonBlock.index!).trim();
         const parts: ContentPart[] = [];
         if (textBefore) parts.push({ type: 'text', content: textBefore });
-        parts.push({ type: 'chart', content: parsed });
+        parts.push({ type: 'chart', content: spec });
         return parts;
       }
     } catch { /* fall through */ }
   }
 
-  // Try parsing the entire content as a chart config (for direct AI responses)
+  // Try parsing the entire content as a chart config or wrapper (for direct AI responses & tool results)
   try {
     const parsed = JSON.parse(content);
-    if (isChartConfig(parsed)) {
-      return [{ type: 'chart', content: parsed }];
-    }
+    const spec = extractChartSpec(parsed);
+    if (spec) return [{ type: 'chart', content: spec }];
   } catch { /* fall through */ }
 
   return [{ type: 'text', content }];

@@ -209,6 +209,13 @@ console.log("MCP OAuth 2.1 (bearer tokens)");
   const pipeResult = await (await rpc(bearer, "tools/call", { name: "pipeline_summary", arguments: {} })).json();
   ok(pipeResult.result?._meta?.ui?.resourceUri === "ui://gallivanter/pipeline-dashboard", "pipeline_summary tool call includes _meta.ui.resourceUri", pipeResult);
 
+  // render_visual tool returns a chart spec with _meta.ui.resourceUri
+  const rvResult = await (await rpc(bearer, "tools/call", { name: "render_visual", arguments: { intent: "Bar chart of deals by stage", module: "Deals", groupBy: "stage" } })).json();
+  ok(rvResult.result?._meta?.ui?.resourceUri === "ui://gallivanter/chart-shell", "render_visual tool call includes _meta.ui.resourceUri", rvResult);
+  let rvStruct;
+  try { rvStruct = JSON.parse(rvResult.result.structuredContent.text); } catch { }
+  ok(rvResult.result.structuredContent?.spec?.type === "bar", "render_visual returns a chart spec with type", rvResult);
+
   // refresh rotation + reuse detection
   const r1 = await (await form("/oauth/token", { grant_type: "refresh_token", refresh_token: t2.refresh_token, client_id: clientId })).json();
   ok(r1.access_token && r1.refresh_token && r1.refresh_token !== t2.refresh_token, "refresh token rotates");

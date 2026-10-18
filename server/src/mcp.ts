@@ -58,12 +58,18 @@ const uiResources: Record<string, { mimeType: string; assetPath: string; descrip
     assetPath: "widgets/pipeline-dashboard.html",
     description: "Interactive pipeline dashboard with bar charts of deals by stage",
   },
+  "ui://gallivanter/chart-shell": {
+    mimeType: MCP_APP_MIME_TYPE,
+    assetPath: "widgets/chart-shell.html",
+    description: "Generic chart rendering shell for inline visual charts",
+  },
 };
 
 // Maps tool names to UI metadata injected into tools/call results.
 // When a tool appears here, its result carries _meta.ui.resourceUri so the client
 // knows to fetch the matching ui:// resource and render it in a sandboxed iframe.
 const uiTools: Record<string, { ui: { resourceUri: string } }> = {
+  render_visual: { ui: { resourceUri: "ui://gallivanter/chart-shell" } },
   pipeline_summary: { ui: { resourceUri: "ui://gallivanter/pipeline-dashboard" } },
 };
 

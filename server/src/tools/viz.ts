@@ -124,3 +124,181 @@ defineTool({
     };
   },
 });
+
+// Import for render_visual
+import type { ModuleKey } from "../../../src/crm/model.ts";
+import { moduleDefs, moduleKeys } from "../../../src/crm/schema.ts";
+import { searchRecords, type FilterRule } from "../records.ts";
+import { AppError } from "../util.ts";
+
+const moduleEnum = z.enum(moduleKeys as [ModuleKey, ...ModuleKey[]]);
+const filterRule = z.object({
+  field: z.string(),
+  operator: z.enum(["is", "is_not", "contains", "not_contains", "starts_with", "empty", "not_empty", "gt", "gte", "lt", "lte"]),
+  value: z.string().optional(),
+});
+
+/**
+ * render_visual - Generate an inline visual chart directly in the chat.
+ *
+ * Queries the CRM data server-side, aggregates it, generates a Chart.js spec,
+ * and delivers it via a ui:// resource so the host renders it inline in a
+ * sandboxed iframe. No HTML is passed through the calling model.
+ */
+defineTool({
+  name: "render_visual",
+  title: "Render an inline chart",
+  description: "Use whenever the user asks for a chart, graph, breakdown or visual of CRM data. Do not call run_report first. This tool queries data, builds a chart spec, and renders it inline.",
+  authority: "read",
+  input: z.object({
+    intent: z.string().describe("Plain-language description of what the visual should show, e.g. 'Pipeline value by stage', 'Leads by source this month'"),
+    module: moduleEnum.describe("CRM module to query (e.g., 'Leads', 'Deals')"),
+    filters: z.array(filterRule).optional().describe("Optional field filters"),
+    groupBy: z.string().optional().describe("Field to group by (e.g., 'stage', 'source', 'ownerId')"),
+    metric: z.enum(["count", "sum", "avg"]).optional().describe("Aggregate metric: count, sum, or avg"),
+    metricField: z.string().optional().describe("Numeric field for sum/avg metrics"),
+  }),
+  async run(ctx, input) {
+    const { intent, module: mod, filters, groupBy: groupByInput, metric: metricInput, metricField: metricFieldInput } = input;
+
+    // Search records with the given filters
+    let recordList: Record<string, unknown>[];
+    try {
+      const searchArgs: { module: ModuleKey; rules: FilterRule[] } = { module: mod, rules: filters ?? [] };
+      const result = await searchRecords(ctx, searchArgs);
+      recordList = result.records as unknown as Record<string, unknown>[];
+    } catch (e) {
+      const err = e instanceof AppError ? e.message : String(e);
+      return {
+        text: JSON.stringify({ error: `Could not query ${mod}: ${err}` }),
+        spec: { type: "bar", title: intent, data: { labels: [], datasets: [] }, options: { color: "#ef4444" } },
+        summary: `Error querying ${mod}.`,
+        empty: true,
+      };
+    }
+
+    if (!recordList.length) {
+      return {
+        text: JSON.stringify({ error: "No records found for this query." }),
+        spec: { type: "bar", title: intent, data: { labels: [], datasets: [] }, options: {} },
+        summary: "No data matches your query.",
+        empty: true,
+      };
+    }
+
+    // Determine chart type from intent keywords
+    const intentLower = intent.toLowerCase();
+    const isPie = intentLower.includes("pie") || intentLower.includes("breakdown") || intentLower.includes("distribution") || intentLower.includes("share of");
+    const isLine = intentLower.includes("trend") || intentLower.includes("over time") || intentLower.includes("timeline") || intentLower.includes("growth");
+    const isTable = intentLower.includes("table") || intentLower.includes("list") || intentLower.includes("grid");
+    const chartType = isTable ? "table" : isPie ? "pie" : isLine ? "line" : "bar";
+
+    // Default groupBy and metricField based on module
+    const modDef = moduleDefs[mod];
+    let groupField = groupByInput;
+    let metricFieldResolved = metricFieldInput;
+    let metricResolved: "count" | "sum" | "avg" = metricInput ?? "count";
+
+    if (!groupField) {
+      // Smart defaults based on module
+      const defaults: Partial<Record<ModuleKey, { groupBy?: string; metricField?: string; metric?: "count" | "sum" | "avg" }>> = {
+        Leads: { groupBy: "source", metric: "count" },
+        Deals: { groupBy: "stage", metric: "sum", metricField: "amount" },
+        Contacts: { groupBy: "company", metric: "count" },
+        Accounts: { groupBy: "industry", metric: "count" },
+        Products: { groupBy: "category", metric: "sum", metricField: "price" },
+        Cases: { groupBy: "status", metric: "count" },
+        Solutions: { groupBy: "category", metric: "count" },
+        Tasks: { groupBy: "status", metric: "count" },
+        Meetings: { groupBy: "status", metric: "count" },
+        Calls: { groupBy: "status", metric: "count" },
+        Vendors: { groupBy: "category", metric: "count" },
+        Quotes: { groupBy: "status", metric: "sum", metricField: "total" },
+        "Sales Orders": { groupBy: "status", metric: "sum", metricField: "total" },
+        Invoices: { groupBy: "status", metric: "sum", metricField: "total" },
+        "Purchase Orders": { groupBy: "status", metric: "sum", metricField: "total" },
+      };
+      const d = defaults[mod];
+      if (d) {
+        if (!groupField && d.groupBy) groupField = d.groupBy;
+        if (!metricResolved && d.metric) metricResolved = d.metric;
+        if (!metricFieldResolved && d.metricField) metricFieldResolved = d.metricField;
+      }
+      // Ultimate fallbacks
+      if (!groupField) groupField = "stage";
+      if (metricResolved === "sum" || metricResolved === "avg") {
+        if (!metricFieldResolved) metricFieldResolved = "amount";
+      }
+    }
+
+    const gf = groupField;
+    const mf = metricFieldResolved;
+    const metricType = metricResolved;
+
+    // Aggregate data by the groupBy field
+    const groups = new Map<string, { count: number; sum: number; values: number[] }>();
+    for (const r of recordList) {
+      const rec = r as Record<string, unknown>;
+      const key = String(rec[gf] ?? rec.stage ?? rec.name ?? rec.company ?? rec.source ?? "Other");
+      if (!groups.has(key)) groups.set(key, { count: 0, sum: 0, values: [] });
+      const g = groups.get(key)!;
+      g.count++;
+      if (mf) {
+        const v = typeof rec[mf] === "number" ? rec[mf] as number : 0;
+        g.sum += isNaN(v) ? 0 : v;
+        g.values.push(isNaN(v) ? 0 : v);
+      }
+    }
+
+    const items = Array.from(groups.entries()).sort((a, b) => b[1].count - a[1].count).slice(0, 10);
+    const labels = items.map((i) => i[0]);
+    const values = items.map((i) => {
+      const g = i[1];
+      if (metricType === "count") return g.count;
+      if (metricType === "sum") return g.sum;
+      if (metricType === "avg") return g.values.length ? g.sum / g.values.length : 0;
+      return g.count;
+    });
+
+    // Determine value label
+    const isCurrency = mf && ["amount", "total", "price"].includes(mf);
+    const valueLabel = isCurrency ? "Amount (₹)" : metricType === "count" ? "Count" : metricType === "avg" ? `Avg ${mf}` : `Sum ${mf}`;
+    const title = intent;
+
+    let spec;
+    if (chartType === "table") {
+      const columns = [gf, valueLabel];
+      const rows = labels.map((label, i) => ({ [gf]: label, [valueLabel]: values[i] }));
+      spec = { type: "table", title, columns, rows };
+    } else if (chartType === "pie") {
+      spec = { type: "pie", title, data: { labels, datasets: [{ data: values }] } };
+    } else {
+      const colors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#06b6d4', '#8b5cf6', '#ec4899', '#14b8a6'];
+      spec = {
+        type: chartType as "bar" | "line",
+        title,
+        data: {
+          labels,
+          datasets: [{
+            label: valueLabel,
+            data: values,
+            backgroundColor: colors.slice(0, values.length),
+            ...(chartType === "line" ? { borderColor: colors.slice(0, values.length), tension: 0.3 } : {}),
+          }],
+        },
+        options: {},
+      };
+    }
+
+    // Build summary text
+    const total = values.reduce((a, b) => a + b, 0);
+    const summary = `${labels.length} ${groupField} groups, ${metricType === "count" ? total + " records" : isCurrency ? `₹${total.toLocaleString()}` : total.toFixed(1) + " total"} across ${chartType} chart.`;
+
+    return {
+      text: JSON.stringify(spec),
+      spec,
+      summary,
+      empty: false,
+    };
+  },
+});

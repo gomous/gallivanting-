@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pipeline Dashboard</title>
+  <style>
+    /* Flat design - no gradients, shadows, or blur */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: transparent;
+      color: hsl(220, 6%, 13%);
+      padding: 16px;
+      width: 100%;
+      height: 100vh;
+      box-sizing: border-box;
+    }
+    .dark body { color: hsl(0, 0% 95%); }
+    #pipeline-container {
+      width: 100%;
+      max-width: 380px;
+      height: 100%;
+      min-height: 200px;
+    }
+    .empty-state {
+      padding: 24px;
+      text-align: center;
+      color: hsl(220, 6%, 50%);
+      font-size: 13px;
+    }
+    @media (prefers-color-scheme: dark) {
+      body { color: hsl(0, 0% 95%); }
+    }
+  </style>
+</head>
+<body>
+  <div id="pipeline-container">
+    <div id="empty-state" class="empty-state" style="display: none;">
+      No data to display
+    </div>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script>
+    let chartInstance = null;
+
+    function renderChart(spec) {
+      const container = document.getElementById('pipeline-container');
+      const emptyState = document.getElementById('empty-state');
+
+      if (!spec || spec.error) {
+        container.innerHTML = '<div class="empty-state">' + (spec?.error || 'No data to display') + '</div>';
+        return;
+      }
+
+      if (spec.type === 'table') {
+        renderTable(spec);
+        emptyState.style.display = 'none';
+        return;
+      }
+
+      if (typeof Chart === 'undefined') {
+        container.innerHTML = '<div class="empty-state">Chart.js failed to load</div>';
+        return;
+      }
+
+      if (chartInstance) {
+        chartInstance.destroy();
+        chartInstance = null;
+      }
+
+      const ctx = document.createElement('canvas');
+      ctx.id = 'chart-canvas';
+      ctx.setAttribute('role', 'img');
+      ctx.setAttribute('aria-label', spec.title || spec.type + ' chart');
+      container.innerHTML = '';
+      container.appendChild(ctx);
+
+      const chartConfig = {
+        type: spec.type,
+        data: spec.data || {},
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          animation: { duration: 200 },
+          plugins: {
+            legend: {
+              labels: {
+                font: { size: 12 },
+                padding: 14,
+                usePointStyle: true,
+              }
+            },
+            tooltip: {
+              enabled: true,
+              callbacks: {
+                label: function(context) {
+                  var value = context.parsed.y;
+                  return context.dataset.label + ': ' + formatNumber(value);
+                }
+              }
+            }
+          },
+          scales: spec.type !== 'pie' ? {
+            x: {
+              grid: { display: false },
+              ticks: { font: { size: 11 }, maxRotation: 0 }
+            },
+            y: {
+              grid: { color: 'hsl(220, 20%, 90%)' },
+              ticks: {
+                font: { size: 11 },
+                callback: function(value) { return formatNumber(value); }
+              }
+            }
+          } : undefined,
+          ...spec.options
+        }
+      };
+
+      chartInstance = new Chart(ctx, chartConfig);
+      emptyState.style.display = 'none';
+    }
+
+    function formatNumber(value) {
+      if (typeof value === 'number') {
+        if (value >= 1000) {
+          return '$' + value.toLocaleString();
+        }
+        return value.toString();
+      }
+      return String(value);
+    }
+
+    function renderTable(spec) {
+      const container = document.getElementById('pipeline-container');
+      const columns = spec.columns || [];
+      const rows = spec.rows || [];
+
+      var table = document.createElement('table');
+      table.style.width = '100%';
+      table.style.borderCollapse = 'collapse';
+      table.setAttribute('aria-label', spec.title || 'Data table');
+
+      var thead = document.createElement('thead');
+      var headerRow = document.createElement('tr');
+      columns.forEach(function(col) {
+        var th = document.createElement('th');
+        th.textContent = col;
+        th.style.textAlign = 'left';
+        th.style.padding = '6px 8px';
+        th.style.fontSize = '12px';
+        th.style.fontWeight = '600';
+        th.style.color = 'hsl(220, 6%, 40%)';
+        th.style.borderBottom = '1px solid hsl(220, 20%, 90%)';
+        headerRow.appendChild(th);
+      });
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      var tbody = document.createElement('tbody');
+      rows.forEach(function(row) {
+        var tr = document.createElement('tr');
+        columns.forEach(function(col) {
+          var td = document.createElement('td');
+          var val = row[col];
+          td.textContent = val === null || val === undefined ? '—' : String(val);
+          td.style.padding = '6px 8px';
+          td.style.fontSize = '12px';
+          td.style.borderBottom = '1px solid hsl(220, 20%, 90%)';
+          tr.appendChild(td);
+        });
+        tbody.appendChild(tr);
+      });
+      table.appendChild(tbody);
+
+      container.innerHTML = '';
+      container.appendChild(table);
+    }
+
+    function extractSpec(parsed) {
+      if (!parsed) return null;
+      // Direct spec
+      if (parsed.type === 'bar' || parsed.type === 'pie' || parsed.type === 'table' || parsed.type === 'line') {
+        return parsed;
+      }
+      // Nested spec
+      if (parsed.spec && (parsed.spec.type === 'bar' || parsed.spec.type === 'pie' || parsed.spec.type === 'table' || parsed.spec.type === 'line')) {
+        return parsed.spec;
+      }
+      // HTML-wrapped spec
+      if (parsed.html) {
+        try {
+          var inner = JSON.parse(parsed.html);
+          return extractSpec(inner);
+        } catch (e) {}
+      }
+      return null;
+    }
+
+    window.addEventListener('message', function(event) {
+      try {
+        var data = event.data;
+        if (data && data.jsonrpc === '2.0' && data.method === 'ui/notifications/tool-result') {
+          var params = data.params || {};
+          // Try structuredContent first
+          if (params.structuredContent) {
+            var spec = extractSpec(params.structuredContent);
+            if (spec) { renderChart(spec); return; }
+          }
+          // Try content text blocks
+          var content = params.content || [];
+          for (var i = 0; i < content.length; i++) {
+            if (content[i].type === 'text' || content[i].type === 'text/plain') {
+              var text = content[i].text || '';
+              try {
+                var parsed = JSON.parse(text);
+                var spec = extractSpec(parsed);
+                if (spec) { renderChart(spec); return; }
+              } catch (e) {}
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error rendering chart:', e);
+      }
+    });
+  </script>
+</body>
+</html>
