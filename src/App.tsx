@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
+import { AiChatView } from "./aiAssistant/AiChatView";
 import { initialLeads, initialTasks } from "./data";
 import { useAuth } from "./cloudflare/AuthContext";
 import { SettingsDialog } from "./cloudflare/SettingsDialog";
@@ -18,7 +19,7 @@ import {
   type TaskStatus,
 } from "./types";
 
-type NavKey = "Home" | "Workqueue" | "Reports" | "Analytics" | "Leads" | "Pipeline" | "Tasks" | CrmModuleKey;
+type NavKey = "Home" | "Workqueue" | "Reports" | "Analytics" | "Leads" | "Pipeline" | "Tasks" | "AI" | CrmModuleKey;
 type FilterGroup = "fields" | "system" | "related";
 type FilterField = "status" | "source" | "industry" | "rating" | "city" | "owner";
 type FilterOperator = "is" | "is_not" | "contains";
@@ -95,6 +96,12 @@ const toolNav: NavItem[] = [
   { label: "Pipeline", icon: "◈" },
 ];
 
+// Add AI Assistant to the bottom of the Tools nav group
+const toolNavAi: NavItem[] = [
+  ...toolNav,
+  { label: "AI", icon: "✦" },
+];
+
 const navItems: NavItem[] = [...workspaceNav, ...salesNav, ...activityNav, ...inventoryNav, ...supportNav, ...toolNav];
 
 const crmModuleKeys: CrmModuleKey[] = ["Contacts", "Accounts", "Deals", "Forecasts", "Documents", "Campaigns", "Meetings", "Calls", "Products", "Price Books", "Quotes", "Sales Orders", "Purchase Orders", "Invoices", "Vendors", "Cases", "Solutions"];
@@ -130,6 +137,7 @@ const zohoNavSegments: Record<NavKey, string> = {
   Cases: "Cases",
   Solutions: "Solutions",
   Pipeline: "Pipeline",
+  AI: "AI",
 };
 
 const zohoSegmentToNav: Record<string, NavKey> = Object.fromEntries(Object.entries(zohoNavSegments).map(([key, segment]) => [segment.split("/")[0], key])) as Record<string, NavKey>;
@@ -562,7 +570,7 @@ function App() {
         <div className="sidebar-label secondary-label">Support</div>
         {renderNavItems(supportNav, "Support navigation")}
         <div className="sidebar-label secondary-label">Tools</div>
-        {renderNavItems(toolNav, "Tools navigation")}
+        {renderNavItems(toolNavAi, "Tools navigation")}
         <nav className="primary-nav" aria-label="Backup navigation">
           <button className="nav-item" onClick={() => { handleExport(); setSidebarOpen(false); }} type="button">
             <span className="nav-icon">⇩</span>
@@ -717,6 +725,8 @@ function App() {
           <CrmModuleWorkspace key={`${route.module}:${route.mode}:${route.recordId ?? ""}`} moduleKey={route.module} initialMode={route.mode} initialRecordId={route.recordId} onAction={showWorkspaceMessage} onRouteChange={handleCrmRouteChange} />
         ) : crmModuleKeys.includes(activeNav as CrmModuleKey) ? (
           <CrmModuleWorkspace key={activeNav} moduleKey={activeNav as CrmModuleKey} onAction={showWorkspaceMessage} onRouteChange={handleCrmRouteChange} />
+        ) : activeNav === "AI" ? (
+          <AiChatView />
         ) : (
           <div className="placeholder-page"><div className="placeholder-icon">{navItems.find((item) => item.label === activeNav)?.icon}</div><div className="eyebrow">Coming next</div><h1>{activeNav}</h1><p>We’ll shape this view after the lead workflow is solid.</p><button className="primary-button" onClick={() => openLeads()} type="button">Back to leads</button></div>
         )}

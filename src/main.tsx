@@ -3,7 +3,6 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import { CrmProvider } from "./crm/store";
 import { AuthProvider } from "./cloudflare/AuthContext";
-import { AiAssistant } from "./AiAssistant";
 import { bootstrap } from "./serverSync";
 
 // Load the signed-in user's CRM from the server into the stores the screens read, before first render.
@@ -42,7 +41,6 @@ createRoot(document.getElementById("root")!).render(
     <AuthProvider>
       <CrmProvider>
         <App />
-        <AiAssistant />
       </CrmProvider>
     </AuthProvider>
   </StrictMode>,
