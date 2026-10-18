@@ -80,7 +80,10 @@ export async function finishGoogleLogin(c: Ctx): Promise<Response> {
   const stored = readCookie(c.req.header("Cookie"), STATE_COOKIE);
   if (url.searchParams.get("error")) return c.redirect(`/?login_error=${encodeURIComponent(url.searchParams.get("error")!)}`);
   if (!code || !state || state !== stored) return c.redirect("/?login_error=state");
-  const next = decodeURIComponent(state.split(".")[1] ?? "%2F");
+  // The state is `<random>.<encodeURIComponent(next)>`, and an encoded URL still contains dots
+  // (claude.ai, 127.0.0.1), so take everything after the FIRST dot rather than split(".")[1].
+  const decodedNext = decodeURIComponent(state.slice(state.indexOf(".") + 1) || "%2F");
+  const next = decodedNext.startsWith("/") && !decodedNext.startsWith("//") ? decodedNext : "/";
 
   const res = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",

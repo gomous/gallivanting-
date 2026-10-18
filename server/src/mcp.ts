@@ -9,7 +9,10 @@
  *
  * Transport: Streamable HTTP (JSON-RPC 2.0 over POST, or SSE when the client
  * opts in with Accept: text/event-stream).
- * Auth: the user's existing Gallivanter session cookie (gv_session). A logged-in
+ * Auth (either works; a presented-but-invalid Bearer token is a 401, never a cookie fallback):
+ *   1. OAuth 2.1 Bearer access token (Authorization: Bearer ...) obtained via /oauth/*. This is
+ *      what Claude and other remote/programmatic MCP clients use. See oauth.ts.
+ *   2. The browser's Gallivanter session cookie (gv_session), for the web UI. A logged-in
  * user's personal workspace is the default context; the `workspaceId` query
  * parameter, or the `workspaceId` arg on initialize, can select another one.
  */
@@ -18,7 +21,7 @@ import { currentUser } from "./auth.ts";
 import { invokeTool, toolManifest, type Role, type ToolContext } from "./registry.ts";
 import { personalWorkspace } from "./legacy.ts";
 import { AppError, publicOrigin, type Env } from "./util.ts";
-import { bearerPrincipal } from "./oauth.ts";
+import { SCOPE, bearerPrincipal, readBearer } from "./oauth.ts";
 // Importing the tool modules registers every tool in the registry. The MCP surface
 // must not depend on index.ts happening to import them, so we pull them in here.
 import "./tools/records.ts";
@@ -50,6 +53,14 @@ const SERVER_VERSION = "0.1.0";
 
 // ---------------- auth / context resolution ----------------
 
+/** Build the WWW-Authenticate challenge (RFC 9728 + RFC 6750). `invalid_token` tells a client that
+ * presented a bearer token to refresh it / re-authorize rather than treat the server as down. */
+function challenge(origin: string, error?: "invalid_token"): string {
+  const parts = [`resource_metadata="${origin}/.well-known/oauth-protected-resource"`, `scope="${SCOPE}"`];
+  if (error) parts.unshift(`error="${error}"`, `error_description="The access token is invalid, expired or revoked"`);
+  return `Bearer ${parts.join(", ")}`;
+}
+
 interface McpEnv {
   Bindings: Env;
 }
@@ -70,7 +81,13 @@ class AuthChallenge extends Error {
  */
 async function resolveContext(c: Context<McpEnv>, requestedWorkspaceId?: string): Promise<ToolContext> {
   // 1. OAuth Bearer token (Claude / app connectors).
-  const principal = await bearerPrincipal(c.env, c.req.header("Authorization"), publicOrigin(c.env, new URL(c.req.url)));
+  const origin = publicOrigin(c.env, new URL(c.req.url));
+  const authz = c.req.header("Authorization");
+  const principal = await bearerPrincipal(c.env, authz, origin);
+  if (!principal && readBearer(authz)) {
+    // A token was presented but is bad: do NOT fall back to the cookie. Tell the client to refresh.
+    throw new AuthChallenge(challenge(origin, "invalid_token"));
+  }
   if (principal) {
     const wsId = requestedWorkspaceId || principal.workspaceId;
     const role = wsId === principal.workspaceId ? principal.role : (await memberRole(c.env, wsId, principal.userId));
@@ -81,8 +98,7 @@ async function resolveContext(c: Context<McpEnv>, requestedWorkspaceId?: string)
   // 2. Browser session cookie (already logged into the web app).
   const user = await currentUser(c.env, c.req.header("Cookie"));
   if (!user) {
-    const origin = publicOrigin(c.env, new URL(c.req.url));
-    throw new AuthChallenge(`Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource"`);
+    throw new AuthChallenge(challenge(origin));
   }
   const wsId = requestedWorkspaceId || (await personalWorkspace(c.env, user));
   const role = await memberRole(c.env, wsId, user.id);
@@ -154,7 +170,8 @@ async function handleMethod(ctx: ToolContext, req: JsonRpcRequest): Promise<Json
         const result = await invokeTool(ctx, p.name, p.arguments ?? {});
         return rpcSuccess(id, {
           content: [{ type: "text", text: typeof result === "string" ? result : JSON.stringify(result) }],
-          structuredContent: result,
+          // MCP requires structuredContent to be a JSON object; arrays/strings travel in `content` only.
+          ...(result !== null && typeof result === "object" && !Array.isArray(result) ? { structuredContent: result } : {}),
           isError: false,
         });
       } catch (e) {

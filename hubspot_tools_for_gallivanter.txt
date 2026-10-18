@@ -1,0 +1,294 @@
+HUBSPOT CONNECTOR TOOLS - REFERENCE FOR GALLIVANTER (LEAD GEN CRM)
+====================================================================
+
+PURPOSE
+Complete list of the HubSpot MCP tools available through the Claude connector,
+with what each does, its main inputs, and which Gallivanter module it maps to.
+Use this as a feature checklist or as a spec for implementing equivalents.
+
+SOURCE
+HubSpot MCP server: https://mcp.hubspot.com/anthropic
+Tools are exposed to Claude over MCP. To call HubSpot from your own backend
+(for example a Cloudflare Worker), use HubSpot's REST API or MCP endpoint directly.
+
+GENERAL RULES (apply to almost every write tool)
+- Show the user a table of proposed changes and get explicit approval before any
+  create/update/delete/publish.
+- Run write operations one at a time, never in parallel on the same record or page.
+- Always read a record or page before editing it.
+- Look up internal property names with search_properties; never guess them.
+- Dropdown (enumeration) values must be the internal value, not the display label.
+- Currency: always request the currency-code property next to any amount.
+- Never invent IDs (list IDs, form GUIDs, workflow IDs, etc.); look them up first.
+
+NOT AVAILABLE
+- No accounting tools (no ledger, bookkeeping, expense tracking, tax, reconciliation).
+- Invoices, quotes, payments, subscriptions, line items, orders and deals exist only
+  as CRM records, readable and (where plan permits) writable via the CRM tools.
+  Real accounting needs a separate system (Zoho Books, Tally, etc.).
+
+====================================================================
+1. SETUP AND DISCOVERY
+====================================================================
+
+get_user_details
+  Returns the current user's ID, owner ID, hub ID, permissions, and which CRM
+  objects/tools are available (read vs write). Call this first.
+  Input: include = [USER_INFORMATION, TOOL_INFORMATION, TEAMS_AND_ROLES]
+  Gallivanter use: login/session identity, permission checks.
+
+get_organization_details
+  Org-wide teams, seats, job titles, account info (timezone, currency), brands.
+  Input: include = [TEAMS, SEATS, JOB_TITLES, ACCOUNT_INFORMATION, BRANDS]
+  Gallivanter use: team management, assignment rules, default currency/timezone.
+
+discover_hubspot_schema
+  Lists object types (contacts, companies, deals, tickets, invoices, quotes,
+  custom objects) with read/write access, and pipelines with stages.
+  Input: query = SEARCH_OBJECT_TYPES | GET_OBJECT_TYPES | GET_PIPELINES
+  Gallivanter use: data model setup, pipeline stage configuration.
+
+search_properties
+  Finds property (field) definitions by keyword for an object type.
+  Input: objectType, keywords (max 5)
+
+get_properties
+  Full definitions of named properties, including dropdown options.
+  Input: objectType, propertyNames
+
+manage_onboarding
+  Checks whether the HubSpot connection works and what setup tasks remain.
+  Input: action (empty = check status, SET_GOAL), goal
+
+tool_guidance
+  Returns usage instructions for any other tool.
+  Input: toolNames
+
+====================================================================
+2. CORE CRM (LEADS, CONTACTS, ACCOUNTS, DEALS, TASKS, QUOTES, INVOICES, CASES)
+====================================================================
+
+search_crm_objects
+  Filtered search over any object type. Supports AND/OR filter groups, text query,
+  sorting, association filters, pagination (limit up to 200, offset).
+  Input: objectType, filterGroups, properties, query, sorts, limit, offset
+  "My records" queries must filter hubspot_owner_id by the user's owner ID.
+  Gallivanter use: lead list, contact search, deal board, filters.
+
+get_crm_objects
+  Fetch up to 100 records of one type by ID.
+  Input: objectType, objectIds, properties
+  Gallivanter use: record detail pages.
+
+query_crm_data
+  SQL-style read queries with aggregates (COUNT, SUM, MEDIAN), GROUP BY,
+  DATE_TRUNC, ORDER BY. One object type per query; no JOIN, HAVING or subqueries.
+  Input: sql
+  Gallivanter use: dashboards, revenue totals, pipeline reports, MRR.
+
+manage_crm_objects
+  Create or update records and associations. Maximum 10 objects per request.
+  Input: createRequest | updateRequest, confirmationStatus
+  Gallivanter use: add lead, edit contact, move deal stage, link contact to company.
+
+search_owners
+  Find users who can own records, by name/email or by owner ID.
+  Input: searchQuery | ownerIds, limit, offset
+  Gallivanter use: lead assignment, round-robin routing.
+
+manage_custom_properties
+  Create custom fields on any object type.
+  Input: customPropertyRequestsForObjectTypes, confirmationStatus
+  Gallivanter use: custom lead fields (source, budget, score).
+
+manage_custom_pipelines
+  Create custom deal/ticket/lead pipelines with stages.
+  Deal stages need probability (0 to 1); other types need state (OPEN/CLOSED).
+  Input: customPipelineRequestsForObjectTypes, confirmationStatus
+  Gallivanter use: sales pipeline stages.
+
+====================================================================
+3. SEGMENTS (LISTS AND SAVED VIEWS)
+====================================================================
+
+manage_segment
+  Create, edit, delete and restore static or dynamic segments; add/remove members;
+  manage exclusions.
+  Operation types: CreateStaticSegmentOperation, CreateDynamicSegmentOperation,
+  UpdateSegmentOperation, AddMembersOperation, RemoveMembersOperation,
+  RemoveAllMembersOperation, DeleteSegmentOperation, RestoreSegmentOperation,
+  UpdateSegmentSuppressionOperation
+  Dynamic segments use a SQL-like filterExpression (property conditions,
+  IN_LIST, FORM_SUBMISSION, PAGE_VIEW, ASSOCIATION, UNIFIED_EVENTS, EMAIL_EVENT).
+  Gallivanter use: smart lists, campaign audiences.
+
+query_segments
+  Read-only lookups for segments.
+  Operation types: SearchSegmentsQuery, SearchFilterInputsQuery,
+  GetSegmentQuery, GetSegmentMembersQuery
+  Gallivanter use: list browser, audience preview.
+
+====================================================================
+4. CAMPAIGNS AND ATTRIBUTION
+====================================================================
+
+manage_campaign_objects
+  Create/update campaigns and attach or remove assets.
+  Operations: CAMPAIGN_CREATE, CAMPAIGN_UPDATE, CAMPAIGN_ASSET,
+  CAMPAIGN_ASSET_TYPES_LIST
+
+read_campaign_data
+  Read campaign analytics and contacts.
+  Operations: GET_ANALYTICS, GET_ASSET_METRICS, GET_CONTACTS,
+  GET_CAMPAIGN_ASSET_TYPES
+
+get_campaign_attribution_reports
+  Revenue/deal attribution grouped by campaign, asset, channel, source, etc.
+  Metrics: REVENUE, DEAL_AMOUNT, DEAL_COUNT, CONTACT_COUNT, ATTRIBUTION_COUNT.
+  Models: LINEAR, FIRST_INTERACTION, LAST_INTERACTION, FULL_PATH, U_SHAPED,
+  W_SHAPED, TIME_DECAY, J_SHAPED, INVERSE_J_SHAPED.
+  Gallivanter use: campaign ROI, lead source performance.
+
+====================================================================
+5. EMAIL MARKETING
+====================================================================
+
+manage_marketing_email
+  Create, update, clone, preview and A/B test marketing emails; edit layout
+  (sections, columns, text/image/button/divider/social/HTML/video/footer modules).
+  Operations: CREATE, UPDATE, CLONE, GET_EMAIL_DETAILS, GET_CONTENT,
+  EDIT_CONTENT, PREVIEW_CONTENT, AB_TEST_EMAIL, LIST_TEMPLATES, GET_TEMPLATE,
+  LIST_SUBSCRIPTION_TYPES, LIST_FROM_ADDRESSES, POLL_EMAIL_CREATION
+  Only draft emails can be edited.
+
+get_marketing_email_analytics
+  Sends, deliveries, opens, clicks, bounces, unsubscribes; email health scores;
+  per-recipient history; unsubscribe survey reasons.
+  Modes: OVERVIEW, HEALTH, RECIPIENTS, UNSUBSCRIBE_SURVEY
+  Gallivanter use: outreach tracking, email reports.
+
+====================================================================
+6. WEBSITE CONTENT
+====================================================================
+
+manage_landing_page
+  Build, style, clone and publish landing pages.
+  Actions: MODULES, MODULE_TYPES, MODULE_DEF, MODULE_STYLES, MODULE_GUIDE,
+  REVISIONS, TEMPLATES, FORMS, BRAND_KIT, LIST_CUSTOM_MODULES,
+  CREATE_FROM_TEMPLATE, CREATE_CUSTOM_TEMPLATE, UPDATE_CUSTOM_TEMPLATE,
+  CREATE_MODULE, UPDATE_MODULE, SET_MODULE_FIELDS, SET_MODULE_STYLES,
+  SET_SECTION_STYLES, INSERT, REMOVE, REMOVE_SECTION, MOVE, SET_METADATA,
+  PUBLISH, CLONE, RESTORE_REVISION, BATCH
+  Confirm with the user before CREATE_FROM_TEMPLATE, PUBLISH, RESTORE_REVISION,
+  UPDATE_CUSTOM_TEMPLATE.
+  Gallivanter use: lead-capture landing pages with forms.
+
+manage_website_page
+  Same capabilities for website pages, plus site navigation menus.
+  Nav operations: NAV_GET_MENU, NAV_SET_ITEM, NAV_REPLACE_MENU, NAV_REMOVE_ITEM
+  (live and site-wide; preview first, apply only after confirmation).
+
+manage_blog_post
+  Create, update, tag, publish and unpublish blog posts.
+  Actions: LIST_BLOGS, LIST_BLOG_POSTS, GET_POST, GET_AUTHOR, LIST_TAGS,
+  GET_BRAND_KIT, CREATE, UPDATE, SET_AUTHOR, PUBLISH, UNPUBLISH
+  Posts are created as drafts; publish is a separate explicit step.
+  Reuse existing tags by exact name.
+
+import-claude-design-from-url
+  Imports a self-contained Claude Design HTML file as a HubSpot landing page,
+  email template, social graphic or blog layout.
+  Input: url, assetType (LANDING_PAGE | EMAIL | SOCIAL_MEDIA | BLOG), title
+  The URL expires in about 10 minutes.
+
+render_asset
+  Shows a blog post, landing page, website page or report inline.
+  Input: assetType, assetId
+
+get_content_analytics_report
+  Page analytics: views, visits, submissions, contacts, bounce rate, CTA stats.
+  Modes: TOTALS, TIME_SERIES, SUMMARY, PEOPLE
+  Gallivanter use: landing page performance, who viewed a page.
+
+====================================================================
+7. REPORTING
+====================================================================
+
+manage_saved_reports
+  List and fetch reports saved in HubSpot.
+  Input: action (LIST | FETCH), reportId | reportName, search, limit, offset
+
+====================================================================
+8. SALES INTELLIGENCE
+====================================================================
+
+search_intent_signals
+  Buyer-intent signals for companies and contacts.
+  Queries: SEARCH, LIST, AGGREGATE
+  Gallivanter use: lead scoring, "hot lead" alerts.
+
+====================================================================
+9. SUPPORT AND CONVERSATIONS
+====================================================================
+
+search_conversations
+  Search chat/email/ticket threads by CRM record, time range, keyword or
+  semantic text, or aggregate counts by status/channel/day/week.
+  Input: objectType+objectId | startTime/endTime | query+searchMethod |
+  aggregationDimensions, plus channel/status/assignee filters
+
+get_conversation_channel_metadata
+  Lists inboxes, channels and channel instances (needed before channel filters).
+  Input: activeOnly
+
+====================================================================
+10. AI-SEARCH VISIBILITY (AEO)
+====================================================================
+
+get_aeo_metrics
+  Brand visibility in AI assistants: mentions, citations, competitor share of
+  voice, per-assistant breakdown, prompt usage limits.
+  Sections: SUMMARY, PROMPTS, CITATIONS, CITATION_ANALYSIS, COMPETITORS,
+  ASSISTANT_BREAKDOWN, RUN_STATUS, ICPS_AND_PRODUCTS, BUSINESS_UNITS, LIMITS
+
+manage_aeo_prompts
+  Read AI responses to a tracked prompt (DETAIL) or start tracking new prompts
+  (CREATE; preview first, then confirm; may consume credits).
+
+manage_aeo_recommendations
+  List and inspect suggested actions to improve AI-search visibility.
+  START_ACTION is not available through the assistant.
+
+====================================================================
+11. FEEDBACK
+====================================================================
+
+show_feedback_form
+  Opens a form to send feedback about the HubSpot connector to HubSpot.
+
+====================================================================
+SUGGESTED GALLIVANTER MODULE MAPPING
+====================================================================
+
+Leads / Contacts / Accounts ... search_crm_objects, get_crm_objects,
+                                manage_crm_objects, search_properties
+Deals / Pipeline ............. discover_hubspot_schema (GET_PIPELINES),
+                                manage_custom_pipelines, manage_crm_objects
+Lists / Segments ............. manage_segment, query_segments
+Assignment / Team ............ search_owners, get_organization_details
+Dashboards / Reports ......... query_crm_data, manage_saved_reports,
+                                get_campaign_attribution_reports
+Campaigns .................... manage_campaign_objects, read_campaign_data
+Email outreach ............... manage_marketing_email,
+                                get_marketing_email_analytics
+Landing pages / Forms ........ manage_landing_page, manage_website_page,
+                                get_content_analytics_report
+Lead scoring ................. search_intent_signals
+Support inbox ................ search_conversations,
+                                get_conversation_channel_metadata
+Billing records (read) ....... query_crm_data / search_crm_objects on invoices,
+                                quotes, payments, subscriptions, line items
+Voice mode ................... map spoken intents to the tools above using
+                                function calling; confirm before any write
+
+END OF FILE

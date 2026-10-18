@@ -1,13 +1,14 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Lead, Task } from "../types";
 import { initialLeads, initialTasks } from "../data";
-import { bootstrap, loadLeadsTasks, onSyncStatus, queueLeadsTasks } from "../serverSync";
+import { bootstrap, currentWorkspace, loadLeadsTasks, onSyncStatus, queueLeadsTasks } from "../serverSync";
 
 export type ConnectionStatus = "checking" | "connected" | "disconnected";
 export type SyncStatus = "idle" | "syncing" | "synced" | "error";
 
 interface AuthContextValue {
   authenticated: boolean;
+  workspaceId: string;
   connectionStatus: ConnectionStatus;
   syncStatus: SyncStatus;
   syncError: string;
@@ -47,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [syncError, setSyncError] = useState("");
   const [leads, setLeadsState] = useState<Lead[]>([]);
   const [tasks, setTasksState] = useState<Task[]>([]);
+  const [workspaceId, setWorkspaceId] = useState("");
   const loaded = useRef(false);
 
   useEffect(() => onSyncStatus((s, detail) => { setSyncStatus(s); setSyncError(s === "error" ? detail ?? "" : ""); }), []);
@@ -58,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (!data) { setConnectionStatus("disconnected"); return; }
         setLeadsState(data.leads);
         setTasksState(data.tasks);
+        setWorkspaceId(currentWorkspace()?.workspaceId ?? "");
         loaded.current = true;
         setAuthenticated(true);
         setConnectionStatus("connected");
@@ -101,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return (
     <AuthContext.Provider
       value={{
-        authenticated, connectionStatus, syncStatus, syncError, leads, tasks, login, logout,
+        authenticated, workspaceId, connectionStatus, syncStatus, syncError, leads, tasks, login, logout,
         setLeads: (updater) => setLeadsState(updater),
         setTasks: (updater) => setTasksState(updater),
         refreshFromDrive, saveNow,

@@ -111,6 +111,121 @@ const changes = (await tool(alice, "changes_since", { since: "" })).body.result;
 ok(changes.records.length >= 10, `changes_since returns ${changes.records.length} records`);
 
 
+console.log("MCP OAuth 2.1 (bearer tokens)");
+{
+  const { webcrypto } = await import("node:crypto");
+  const b64u = (buf) => Buffer.from(buf).toString("base64url");
+  const dev = await (await fetch(`${BASE}/api/auth/dev-login`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: `oauth-${stamp}@example.com`, name: "OAuth User" }) })).json();
+  const cookie = `gv_session=${dev.token}`;
+  const redirect = "http://127.0.0.1:53682/callback";
+  const manual = { redirect: "manual" };
+  const post = (path, body, headers = {}) => fetch(`${BASE}${path}`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) });
+  const form = (path, fields, headers = {}) => fetch(`${BASE}${path}`, { method: "POST", ...manual, headers: { "Content-Type": "application/x-www-form-urlencoded", ...headers }, body: new URLSearchParams(fields) });
+  const rpc = (headers, method = "tools/list") => fetch(`${BASE}/mcp`, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", ...headers }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params: {} }) });
+  const pkce = async () => { const verifier = b64u(webcrypto.getRandomValues(new Uint8Array(32))); return { verifier, challenge: b64u(await webcrypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier))) }; };
+  const authUrl = (clientId, challenge, extra = {}) => `${BASE}/oauth/authorize?` + new URLSearchParams({ response_type: "code", client_id: clientId, redirect_uri: redirect, state: "st123", code_challenge: challenge, code_challenge_method: "S256", ...extra });
+
+  // discovery + challenge
+  const noAuth = await rpc({});
+  ok(noAuth.status === 401 && /resource_metadata=/.test(noAuth.headers.get("www-authenticate") ?? ""), "unauthenticated /mcp → 401 + resource_metadata", noAuth.headers.get("www-authenticate"));
+  const prm = await (await fetch(`${BASE}/.well-known/oauth-protected-resource/mcp`)).json();
+  ok(prm.resource?.endsWith("/mcp") && prm.authorization_servers?.length === 1, "protected-resource metadata (RFC 9728, path-suffixed)", prm);
+  const asm = await (await fetch(`${BASE}/.well-known/oauth-authorization-server`)).json();
+  ok(asm.code_challenge_methods_supported?.join() === "S256" && asm.registration_endpoint && asm.revocation_endpoint, "AS metadata: S256 only, registration + revocation", asm);
+  const preflight = await fetch(`${BASE}/mcp`, { method: "OPTIONS", headers: { Origin: "https://inspector.example", "Access-Control-Request-Method": "POST" } });
+  ok(preflight.status === 204 && preflight.headers.get("access-control-allow-origin") === "*", "CORS preflight on /mcp");
+
+  // dynamic registration (RFC 7591)
+  const evil = await post("/oauth/register", { client_name: "x", redirect_uris: ["http://evil.example/cb"] });
+  ok(evil.status === 400 && (await evil.json()).error === "invalid_redirect_uri", "registration rejects plain-http non-loopback redirect");
+  const reg = await (await post("/oauth/register", { client_name: "Smoke Client", redirect_uris: [redirect], token_endpoint_auth_method: "none" })).json();
+  ok(reg.client_id && reg.registration_access_token && reg.registration_client_uri, "register client (RFC 7591 + 7592 fields)", reg);
+  const clientId = reg.client_id;
+
+  // authorization endpoint
+  const p1 = await pkce();
+  const noCookie = await fetch(authUrl(clientId, p1.challenge), manual);
+  ok(noCookie.status === 302 && /\/api\/auth\/google\?next=/.test(noCookie.headers.get("location") ?? ""), "signed-out user is bounced through Google login");
+  const noPkce = await fetch(`${BASE}/oauth/authorize?` + new URLSearchParams({ response_type: "code", client_id: clientId, redirect_uri: redirect, state: "s" }), { ...manual, headers: { Cookie: cookie } });
+  ok(noPkce.status === 302 && /error=invalid_request/.test(noPkce.headers.get("location") ?? ""), "PKCE is mandatory (redirects with invalid_request)");
+  const wrongRedirect = await fetch(authUrl(clientId, p1.challenge, { redirect_uri: "http://evil.example/cb" }), { ...manual, headers: { Cookie: cookie } });
+  ok(wrongRedirect.status === 400, "unregistered redirect_uri is never redirected to");
+
+  const getCode = async (clientIdArg = clientId) => {
+    const pk = await pkce();
+    const page = await fetch(authUrl(clientIdArg, pk.challenge), { ...manual, headers: { Cookie: cookie } });
+    const html = await page.text();
+    const consent = /name="consent" value="([^"]+)"/.exec(html)?.[1];
+    return { pk, page, consent, approve: async (decision = "approve", headers = { Cookie: cookie }) => form("/oauth/authorize", { consent, decision }, headers) };
+  };
+  const c1 = await getCode();
+  ok(c1.page.status === 200 && c1.consent, "signed-in user gets a consent screen (no silent approval)");
+  const anon = await c1.approve("approve", {});
+  ok(anon.status === 400, "consent POST without the session cookie is rejected");
+  const denied = await (await getCode()).approve("deny");
+  ok(denied.status === 303 && /error=access_denied/.test(denied.headers.get("location") ?? ""), "deny → access_denied redirect");
+  const approved = await c1.approve();
+  const loc = new URL(approved.headers.get("location") ?? "http://x/");
+  const code = loc.searchParams.get("code");
+  ok(approved.status === 303 && code && loc.searchParams.get("state") === "st123" && loc.origin === new URL(redirect).origin, "approve → code + state redirected to the client callback", approved.headers.get("location"));
+
+  // token endpoint
+  const bad = await form("/oauth/token", { grant_type: "authorization_code", code, code_verifier: (await pkce()).verifier, client_id: clientId, redirect_uri: redirect });
+  ok(bad.status === 400 && (await bad.json()).error === "invalid_grant", "wrong code_verifier → invalid_grant");
+  const c2 = await getCode();
+  const code2 = new URL((await c2.approve()).headers.get("location")).searchParams.get("code");
+  const tokenReq = { grant_type: "authorization_code", code: code2, code_verifier: c2.pk.verifier, client_id: clientId, redirect_uri: redirect };
+  const t1 = await (await form("/oauth/token", tokenReq)).json();
+  ok(t1.access_token && t1.refresh_token && t1.token_type === "Bearer" && t1.expires_in === 900, "code + PKCE verifier → access & refresh token", t1);
+  const replay = await form("/oauth/token", tokenReq);
+  ok(replay.status === 400, "authorization code is single-use");
+  const dead = await form("/oauth/token", { grant_type: "refresh_token", refresh_token: t1.refresh_token, client_id: clientId });
+  ok(dead.status === 400, "code replay revokes the refresh-token family it produced");
+
+  // fresh session for the rest
+  const c3 = await getCode();
+  const code3 = new URL((await c3.approve()).headers.get("location")).searchParams.get("code");
+  const t2 = await (await form("/oauth/token", { grant_type: "authorization_code", code: code3, code_verifier: c3.pk.verifier, client_id: clientId, redirect_uri: redirect })).json();
+
+  // resource server (mcp.ts)
+  const bearer = { Authorization: `Bearer ${t2.access_token}` };
+  const listed = await (await rpc(bearer)).json();
+  ok(Array.isArray(listed.result?.tools) && listed.result.tools.length > 0, `Bearer token authenticates /mcp (${listed.result?.tools?.length} tools)`, listed);
+  const init = await (await rpc(bearer, "initialize")).json();
+  ok(init.result?.workspaceId && init.result?.role === "owner", "bearer context resolves workspace + role", init);
+  const junk = await rpc({ Authorization: "Bearer not.a.token" });
+  ok(junk.status === 401 && /invalid_token/.test(junk.headers.get("www-authenticate") ?? ""), "garbage bearer → 401 invalid_token");
+  const bearerWinsOverCookie = await rpc({ Authorization: "Bearer not.a.token", Cookie: cookie });
+  ok(bearerWinsOverCookie.status === 401, "a bad bearer does not fall back to the cookie");
+  const viaCookie = await (await rpc({ Cookie: cookie })).json();
+  ok(Array.isArray(viaCookie.result?.tools), "session-cookie auth still works for the web UI");
+
+  // refresh rotation + reuse detection
+  const r1 = await (await form("/oauth/token", { grant_type: "refresh_token", refresh_token: t2.refresh_token, client_id: clientId })).json();
+  ok(r1.access_token && r1.refresh_token && r1.refresh_token !== t2.refresh_token, "refresh token rotates");
+  const reuse = await form("/oauth/token", { grant_type: "refresh_token", refresh_token: t2.refresh_token, client_id: clientId });
+  ok(reuse.status === 400, "reusing a rotated refresh token is rejected");
+  const familyDead = await form("/oauth/token", { grant_type: "refresh_token", refresh_token: r1.refresh_token, client_id: clientId });
+  ok(familyDead.status === 400, "reuse detection revokes the newest token too");
+
+  // client management (RFC 7592) + revocation
+  const noTok = await fetch(`${BASE}/oauth/register/${clientId}`);
+  ok(noTok.status === 401, "client management requires the registration access token");
+  const mgmt = { Authorization: `Bearer ${reg.registration_access_token}` };
+  const info = await (await fetch(`${BASE}/oauth/register/${clientId}`, { headers: mgmt })).json();
+  ok(info.client_id === clientId && info.client_name === "Smoke Client", "GET client configuration", info);
+  const upd = await (await fetch(`${BASE}/oauth/register/${clientId}`, { method: "PUT", headers: { ...mgmt, "Content-Type": "application/json" }, body: JSON.stringify({ client_id: clientId, client_name: "Renamed", redirect_uris: [redirect] }) })).json();
+  ok(upd.client_name === "Renamed", "PUT client configuration", upd);
+  const c4 = await getCode();
+  const t3 = await (await form("/oauth/token", { grant_type: "authorization_code", code: new URL((await c4.approve()).headers.get("location")).searchParams.get("code"), code_verifier: c4.pk.verifier, client_id: clientId, redirect_uri: redirect })).json();
+  await form("/oauth/revoke", { token: t3.refresh_token, client_id: clientId });
+  ok((await form("/oauth/token", { grant_type: "refresh_token", refresh_token: t3.refresh_token, client_id: clientId })).status === 400, "POST /oauth/revoke kills the refresh token");
+  const del = await fetch(`${BASE}/oauth/register/${clientId}`, { method: "DELETE", headers: mgmt });
+  ok(del.status === 204, "DELETE client configuration");
+  const gone = await fetch(authUrl(clientId, p1.challenge), { ...manual, headers: { Cookie: cookie } });
+  ok(gone.status === 400, "deleted client can no longer start authorization");
+}
+
 console.log("Original UI sync (/api/legacy)");
 const carol = await login(`carol-${stamp}@example.com`, "Carol");
 const snap0 = (await carol.call("GET", "/api/legacy/snapshot")).body;

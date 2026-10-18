@@ -6,7 +6,7 @@ import { syncAllSheets } from "./sheets.ts";
 import { personalWorkspace, snapshot, syncCollection, type LegacyRecord } from "./legacy.ts";
 import { apiKeys, chat, listModels, type AiEnv, type ChatMessage } from "./ai.ts";
 import { handleMcp } from "./mcp.ts";
-import { authServerMetadata, authorize, clientRegister, resourceMetadata, token } from "./oauth.ts";
+import { authServerMetadata, authorize, authorizeSubmit, clientDelete, clientRead, clientRegister, clientUpdate, resourceMetadata, revoke, token } from "./oauth.ts";
 // Importing the tool modules registers every tool.
 import "./tools/records.ts";
 import "./tools/activities.ts";
@@ -186,6 +186,28 @@ app.all("/api/*", (c) => c.json({ error: { code: "not_found", message: "Unknown 
 
 // ---------- MCP (Model Context Protocol) endpoint for Claude & app connectors ----------
 // Streamable HTTP: POST JSON-RPC. Run before the SPA catch-all so /mcp* is served here.
+// CORS for the machine-facing endpoints only (browser-based MCP clients such as the MCP Inspector).
+// Never on /oauth/authorize, which is a top-level browser navigation. Origin "*" is safe here: with a
+// wildcard the browser never attaches the gv_session cookie, so cross-origin pages can only use Bearer tokens.
+const CORS_HEADERS: Record<string, string> = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Authorization, Content-Type, Accept, Mcp-Protocol-Version, Mcp-Session-Id",
+  "Access-Control-Expose-Headers": "WWW-Authenticate, Mcp-Session-Id",
+  "Access-Control-Max-Age": "86400",
+};
+const wantsCors = (p: string) =>
+  p === "/mcp" || p.startsWith("/mcp/") || p.startsWith("/.well-known/") ||
+  p === "/oauth/token" || p === "/oauth/revoke" || p === "/oauth/register" || p.startsWith("/oauth/register/");
+app.use("*", async (c, next) => {
+  if (!wantsCors(new URL(c.req.url).pathname)) return next();
+  if (c.req.method === "OPTIONS") return new Response(null, { status: 204, headers: CORS_HEADERS });
+  await next();
+  const res = new Response(c.res.body, c.res); // clone so headers are mutable
+  for (const [k, v] of Object.entries(CORS_HEADERS)) res.headers.set(k, v);
+  c.res = res;
+});
+
 app.all("/mcp", async (c) => handleMcp(c as never));
 app.all("/mcp/*", async (c) => handleMcp(c as never));
 
@@ -193,10 +215,16 @@ app.all("/mcp/*", async (c) => handleMcp(c as never));
 // Discovery metadata (RFC 9728 + RFC 8414) and the dynamic registration,
 // authorization, and token endpoints. Claude finds these via the 401 challenge.
 app.get("/.well-known/oauth-protected-resource", (c) => resourceMetadata(c as never));
+app.get("/.well-known/oauth-protected-resource/mcp", (c) => resourceMetadata(c as never)); // RFC 9728 path-suffixed form
 app.get("/.well-known/oauth-authorization-server", (c) => authServerMetadata(c as never));
 app.post("/oauth/register", (c) => clientRegister(c as never));
+app.get("/oauth/register/:client_id", (c) => clientRead(c as never)); // RFC 7592
+app.put("/oauth/register/:client_id", (c) => clientUpdate(c as never));
+app.delete("/oauth/register/:client_id", (c) => clientDelete(c as never));
 app.get("/oauth/authorize", (c) => authorize(c as never));
+app.post("/oauth/authorize", (c) => authorizeSubmit(c as never)); // consent decision
 app.post("/oauth/token", (c) => token(c as never));
+app.post("/oauth/revoke", (c) => revoke(c as never));
 
 // Everything else is the React app (static assets with SPA fallback).
 app.all("*", (c) => c.env.ASSETS.fetch(c.req.raw));

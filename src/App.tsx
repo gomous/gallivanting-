@@ -208,7 +208,7 @@ function routeFromLocation(): { activeNav: NavKey; route: CrmRoute | null } {
 
 function App() {
   const initialRoute = useMemo(routeFromLocation, []);
-  const { leads, tasks, setLeads, setTasks, authenticated, syncStatus, login, logout, refreshFromDrive, saveNow } = useAuth();
+  const { leads, tasks, setLeads, setTasks, authenticated, workspaceId, syncStatus, login, logout, refreshFromDrive, saveNow } = useAuth();
   const [showSettings, setShowSettings] = useState(false);
 
   const [activeNav, setActiveNav] = useState<NavKey>(initialRoute.activeNav);
@@ -221,6 +221,7 @@ function App() {
   const [relatedFilters, setRelatedFilters] = useState<string[]>([]);
   const [sortNewest, setSortNewest] = useState(true);
   const [selectedLeadId, setSelectedLeadId] = useState("");
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
   const [showCreate, setShowCreate] = useState(false);
   const [showTaskCreate, setShowTaskCreate] = useState(false);
   const [draft, setDraft] = useState<LeadDraft>(emptyDraft);
@@ -633,10 +634,10 @@ function App() {
                   <label className="search-box"><span>⌕</span><input aria-label="Search leads" onChange={(event) => setSearch(event.target.value)} placeholder="Search leads..." value={search} /></label>
                   <button aria-label="Filter" className={`toolbar-button ${filterOpen ? "selected" : ""}`} onClick={() => setFilterOpen((open) => !open)} type="button"><span>☷</span> Filter{activeFilterCount > 0 ? <b>{activeFilterCount}</b> : null}</button>
                   <button aria-label="Sort leads" className="toolbar-button" onClick={() => setSortNewest((current) => !current)} type="button"><span>↕</span> {sortNewest ? "Recent" : "Company"}</button>
-                   <button className="toolbar-button toolbar-refresh" onClick={() => showWorkspaceMessage("Lead view refreshed.")} type="button">↻ Refresh Custom View</button>
+                   <button className="toolbar-button toolbar-refresh" onClick={async () => { await refreshFromDrive(); setSearch(""); resetFilters(); }} type="button">↻ Refresh</button>
                   <button aria-label="Create Lead" className="toolbar-button create-toolbar-button" onClick={() => { setEditingLeadId(null); setDraft(emptyDraft); setFormError(""); setShowCreate(true); }} type="button">＋ Create Lead</button>
-                    <button className="toolbar-button toolbar-more" onClick={() => showWorkspaceMessage("More lead actions opened.")} type="button">More</button>
-                    <button className="toolbar-button toolbar-actions-menu" onClick={() => showWorkspaceMessage("Lead actions opened.")} type="button">Actions</button>
+                    <button className="toolbar-button toolbar-more" onClick={() => showWorkspaceMessage("More lead actions: bulk export, import, or print selected records.")} type="button">More</button>
+                    <button className="toolbar-button toolbar-actions-menu" onClick={() => showWorkspaceMessage(selectedLeads.size > 0 ? `Apply actions to ${selectedLeads.size} selected lead(s): tag, change owner, move status` : "Select leads to enable actions.")} type="button">Actions</button>
                 </div>
               </div>
 
@@ -671,11 +672,25 @@ function App() {
               <div className="table-layout">
                 <div className="table-wrap">
                   <table>
-                     <thead><tr><th className="check-cell"><input aria-label="Select all visible leads" type="checkbox" /></th><th>Lead Name</th><th>Company</th><th>Email</th><th>Phone</th><th>Lead Source</th><th>Lead Owner</th></tr></thead>
+                     <thead><tr><th className="check-cell"><input aria-label="Select all visible leads" checked={filteredLeads.length > 0 && filteredLeads.every((lead) => selectedLeads.has(lead.id))} onChange={(event) => {
+                        if (event.target.checked) {
+                          setSelectedLeads(new Set(filteredLeads.map((lead) => lead.id)));
+                        } else {
+                          setSelectedLeads(new Set());
+                        }
+                      }} type="checkbox" /></th><th>Lead Name</th><th>Company</th><th>Email</th><th>Phone</th><th>Lead Source</th><th>Lead Owner</th></tr></thead>
                     <tbody>
                       {filteredLeads.map((lead) => (
                         <tr className={selectedLead?.id === lead.id ? "selected-row" : ""} key={lead.id} onClick={() => setSelectedLeadId(lead.id)}>
-                          <td className="check-cell" onClick={(event) => event.stopPropagation()}><input aria-label={`Select ${lead.company}`} type="checkbox" /></td>
+                          <td className="check-cell" onClick={(event) => event.stopPropagation()}><input aria-label={`Select ${lead.company}`} checked={selectedLeads.has(lead.id)} onChange={(event) => {
+                        const next = new Set(selectedLeads);
+                        if (event.target.checked) {
+                          next.add(lead.id);
+                        } else {
+                          next.delete(lead.id);
+                        }
+                        setSelectedLeads(next);
+                      }} type="checkbox" /></td>
                            <td data-label="Lead name"><div className="lead-cell"><div className={`lead-avatar ${ratingTone(lead.rating)}`}>{initials(lead)}</div><div><strong>{lead.firstName} {lead.lastName}</strong><span>{lead.title}</span></div></div></td>
                            <td data-label="Company"><strong className="company-name">{lead.company}</strong><span className="cell-subtext">{lead.industry}</span></td>
                             <td data-label="Email"><span className="source-text">{lead.email || "—"}</span></td>
@@ -693,7 +708,7 @@ function App() {
             </section>
           </div>
         ) : activeNav === "Tasks" ? (
-          <TasksWorkspace tasks={tasks} onAction={showWorkspaceMessage} onCreate={() => setShowTaskCreate(true)} onStatusChange={(taskId, status) => setTasks((current) => current.map((task) => task.id === taskId ? { ...task, status } : task))} />
+          <TasksWorkspace tasks={tasks} onAction={showWorkspaceMessage} onCreate={() => setShowTaskCreate(true)} onStatusChange={(taskId, status) => setTasks((current) => current.map((task) => task.id === taskId ? { ...task, status } : task))} onRefresh={refreshFromDrive} />
         ) : activeNav === "Pipeline" ? (
           <PipelineWorkspace leads={leads} onAction={showWorkspaceMessage} onStatusChange={updateLeadStatus} onSelectLead={openLeads} />
         ) : activeNav === "Home" || activeNav === "Workqueue" || activeNav === "Reports" || activeNav === "Analytics" ? (
@@ -722,13 +737,21 @@ function LeadDetail({ lead, noteDraft, onAction, onAddNote, onChangeNote, onClos
     <aside className="detail-panel" aria-label="Lead details">
       <div className="detail-topbar"><span className="detail-kicker">Lead record</span><button className="close-button" onClick={onClose} type="button">×</button></div>
       <div className="detail-identity"><div className={`detail-avatar ${ratingTone(lead.rating)}`}>{initials(lead)}</div><div><h2>{lead.firstName} {lead.lastName}</h2><p>{lead.title} · {lead.company}</p></div></div>
-      <div className="detail-actions"><button className="small-primary" onClick={() => onAction(lead.email ? `Email draft ready for ${lead.email}.` : "This lead does not have an email address yet.")} type="button">Send email</button><button className="small-button" onClick={onEdit} type="button">Edit</button><button className="small-button" onClick={() => onAction("Lead actions opened.")} type="button">•••</button></div>
+      <div className="detail-actions"><button className="small-primary" onClick={() => {
+                      if (lead.email) {
+                        const subject = encodeURIComponent(`Introduction - ${lead.company}`);
+                        const body = encodeURIComponent(`Hi ${lead.firstName},\n\nI'm reaching out from Gallivanter regarding your role as ${lead.title} at ${lead.company}. Would you be available for a brief conversation this week?\n\nBest regards`);
+                        window.open(`mailto:${lead.email}?subject=${subject}&body=${body}`, "_blank");
+                      } else {
+                        onAction("This lead does not have an email address yet.");
+                      }
+                    }} type="button">Send email</button><button className="small-button" onClick={onEdit} type="button">Edit</button><button className="small-button" onClick={() => onAction("Lead actions opened.")} type="button">•••</button></div>
       <div className="detail-tabs"><button className={tab === "Overview" ? "active" : ""} onClick={() => onTabChange("Overview")} type="button">Overview</button><button className={tab === "Timeline" ? "active" : ""} onClick={() => onTabChange("Timeline")} type="button">Timeline</button></div>
       {tab === "Overview" ? <>
         <div className="detail-status-row"><span className={`status-pill ${statusTone(lead.status)}`}><i />{lead.status}</span><span className={`rating-badge ${ratingTone(lead.rating)}`}>{lead.rating} fit</span></div>
          <div className="detail-section"><div className="section-title"><strong>Lead information</strong><button aria-expanded={informationOpen} onClick={() => setInformationOpen((current) => !current)} type="button">⌄</button></div>{informationOpen ? <div className="detail-fields"><DetailField label="Email" value={lead.email} /><DetailField label="Phone" value={lead.phone} /><DetailField label="Source" value={lead.source} /><DetailField label="Industry" value={lead.industry} /><DetailField label="Location" value={`${lead.city}, ${lead.country}`} /><DetailField label="Website" value={lead.website} /></div> : null}</div>
         <div className="detail-section"><div className="section-title"><strong>Notes</strong><span className="section-count">{lead.notes.length}</span></div><div className="note-composer"><textarea aria-label="Add a note" onChange={(event) => onChangeNote(event.target.value)} placeholder="Add a note for your next action..." value={noteDraft} /><button className="note-submit" disabled={!noteDraft.trim()} onClick={onAddNote} type="button">Add note</button></div>{lead.notes.slice(0, 2).map((note, index) => <div className="note-item" key={`${note}-${index}`}><div className="note-marker">✦</div><div><p>{note}</p><span>{index === 0 ? "Latest note" : "Earlier note"}</span></div></div>)}</div>
-         <div className="detail-section related-section"><div className="section-title"><strong>Related records</strong><button onClick={() => onAction("Related record creation is ready from this lead.")} type="button">＋</button></div><div className="related-grid"><span>Tasks <b>{lead.taskCount}</b></span><span>Notes <b>{lead.notes.length}</b></span><span>Emails <b>{lead.emailCount}</b></span><span>Calls <b>{lead.callCount}</b></span></div></div>
+         <div className="detail-section related-section"><div className="section-title"><strong>Related records</strong><button onClick={() => onAction(`Related records for ${lead.company}: Tasks, Notes, and Activities can be managed in the Timeline tab.`)} type="button">＋</button></div><div className="related-grid"><span>Tasks <b>{lead.taskCount}</b></span><span>Notes <b>{lead.notes.length}</b></span><span>Emails <b>{lead.emailCount}</b></span><span>Calls <b>{lead.callCount}</b></span></div></div>
       </> : <div className="timeline"><TimelineItem title="Lead created" meta={lead.createdAt} detail="Record added to the workspace" color="blue" /><TimelineItem title="Research reviewed" meta={lead.lastActivity} detail="Fit score and source details updated" color="purple" /><TimelineItem title="Next step" meta="Pending" detail="Choose an outreach action" color="amber" /></div>}
     </aside>
   );
@@ -742,9 +765,10 @@ function TimelineItem({ title, meta, detail, color }: { title: string; meta: str
   return <div className="timeline-item"><span className={`timeline-dot ${color}`} /><div><div className="timeline-heading"><strong>{title}</strong><span>{meta}</span></div><p>{detail}</p></div></div>;
 }
 
-function TasksWorkspace({ tasks, onAction, onCreate, onStatusChange }: { tasks: Task[]; onAction: (message: string) => void; onCreate: () => void; onStatusChange: (taskId: string, status: TaskStatus) => void }) {
+function TasksWorkspace({ tasks, onAction, onCreate, onStatusChange, onRefresh }: { tasks: Task[]; onAction: (message: string) => void; onCreate: () => void; onStatusChange: (taskId: string, status: TaskStatus) => void; onRefresh: () => Promise<void> }) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | TaskStatus>("all");
+  const [filterPanelOpen, setFilterPanelOpen] = useState(false);
   const [sortAscending, setSortAscending] = useState(false);
   const visibleTasks = tasks
     .filter((task) => [task.subject, task.contact, task.relatedTo, task.description].join(" ").toLowerCase().includes(search.trim().toLowerCase()))
@@ -763,8 +787,8 @@ function TasksWorkspace({ tasks, onAction, onCreate, onStatusChange }: { tasks: 
      <section className="page-heading"><div><h1>Tasks</h1></div></section>
     <section className="task-summary-row"><div className="task-summary"><span>Open tasks</span><strong>{activeTasks}</strong><small>Across your pipeline</small></div><div className="task-summary"><span>Due today</span><strong>{tasks.filter((task) => task.dueDate === "Today").length}</strong><small>Prioritize these first</small></div><div className="task-summary"><span>Completed</span><strong>{tasks.filter((task) => task.status === "Completed").length}</strong><small>This workspace</small></div></section>
     <section className="tasks-card">
-         <div className="tasks-toolbar"><div className="view-title"><div className="view-symbol">✓</div><div><strong>All Tasks</strong><span>{statusFilter === "all" ? "Kanban by status" : `${statusFilter} tasks`}</span></div></div><div className="toolbar-actions"><label className="search-box"><span>⌕</span><input aria-label="Search tasks" onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks..." value={search} /></label><button className="toolbar-button" onClick={cycleStatusFilter} type="button">Tasks by Status⌄</button><button className="toolbar-button" onClick={cycleStatusFilter} type="button">☷ Filter</button><button className="toolbar-button" onClick={() => setSortAscending((current) => !current)} type="button">↕ Sort</button><button className="toolbar-button toolbar-refresh" onClick={() => { setSearch(""); setStatusFilter("all"); setSortAscending(false); onAction("Task view refreshed."); }} type="button">↻ Refresh Custom View</button><button aria-label="Create Task" className="toolbar-button create-toolbar-button" onClick={onCreate} type="button">＋ Create Task</button><button className="toolbar-button toolbar-more" onClick={() => onAction("More task actions opened.")} type="button">More</button><button className="toolbar-button toolbar-actions-menu" onClick={() => onAction("Task actions opened.")} type="button">Actions</button></div></div>
-       <div className="kanban-grid">{taskStatuses.map((status) => <div className="kanban-column" key={status}><div className="kanban-heading"><div><strong>{status}</strong><span>{visibleTasks.filter((task) => task.status === status).length}</span></div><button onClick={() => onAction(`${status} task options opened.`)} type="button">•••</button></div><div className="task-stack">{visibleTasks.filter((task) => task.status === status).map((task) => <article className="task-card" key={task.id}><div className="task-card-top"><span className={`priority-dot ${task.priority.toLowerCase()}`} /> <span className="task-priority">{task.priority} priority</span><button onClick={() => onAction(`Actions for “${task.subject}” opened.`)} type="button">•••</button></div><h3>{task.subject}</h3><p>{task.description}</p><div className="task-related"><span>↗ {task.relatedTo || "Unlinked"}</span><span>◷ {task.dueDate}</span></div><div className="task-card-footer"><span className="mini-avatar">{task.owner.slice(0, 1)}</span><span>{task.owner}</span><select aria-label={`Change status for ${task.subject}`} onChange={(event) => onStatusChange(task.id, event.target.value as TaskStatus)} value={task.status}>{taskStatuses.map((option) => <option key={option}>{option}</option>)}</select></div></article>)}{visibleTasks.filter((task) => task.status === status).length === 0 ? <div className="empty-column">No tasks here</div> : null}</div></div>)}</div>
+         <div className="tasks-toolbar"><div className="view-title"><div className="view-symbol">✓</div><div><strong>All Tasks</strong><span>{statusFilter === "all" ? "Kanban by status" : `${statusFilter} tasks`}</span></div></div><div className="toolbar-actions"><label className="search-box"><span>⌕</span><input aria-label="Search tasks" onChange={(event) => setSearch(event.target.value)} placeholder="Search tasks..." value={search} /></label><button className="toolbar-button" onClick={cycleStatusFilter} type="button">Tasks by Status⌄</button><button className="toolbar-button" onClick={() => setFilterPanelOpen(true)} type="button">☷ Filter</button><button className="toolbar-button" onClick={() => setSortAscending((current) => !current)} type="button">↕ Sort</button><button className="toolbar-button toolbar-refresh" onClick={async () => { await onRefresh(); setSearch(""); setStatusFilter("all"); setSortAscending(false); }} type="button">↻ Refresh</button><button aria-label="Create Task" className="toolbar-button create-toolbar-button" onClick={onCreate} type="button">＋ Create Task</button><button className="toolbar-button toolbar-more" onClick={() => onAction("More task actions: bulk export, reassign, or complete selected tasks.")} type="button">More</button><button className="toolbar-button toolbar-actions-menu" onClick={() => onAction("Task actions menu: change status, set due date, assign owner.")} type="button">Actions</button></div></div>
+       <div className="kanban-grid">{taskStatuses.map((status) => <div className="kanban-column" key={status}><div className="kanban-heading"><div><strong>{status}</strong><span>{visibleTasks.filter((task) => task.status === status).length}</span></div><button onClick={() => onAction(`${status} column: bulk select, expand, or collapse tasks.`)} type="button">•••</button></div><div className="task-stack">{visibleTasks.filter((task) => task.status === status).map((task) => <article className="task-card" key={task.id}><div className="task-card-top"><span className={`priority-dot ${task.priority.toLowerCase()}`} /> <span className="task-priority">{task.priority} priority</span><button onClick={() => onAction(`Actions for “${task.subject}”: edit, clone, or delete this task.`)} type="button">•••</button></div><h3>{task.subject}</h3><p>{task.description}</p><div className="task-related"><span>↗ {task.relatedTo || "Unlinked"}</span><span>◷ {task.dueDate}</span></div><div className="task-card-footer"><span className="mini-avatar">{task.owner.slice(0, 1)}</span><span>{task.owner}</span><select aria-label={`Change status for ${task.subject}`} onChange={(event) => onStatusChange(task.id, event.target.value as TaskStatus)} value={task.status}>{taskStatuses.map((option) => <option key={option}>{option}</option>)}</select></div></article>)}{visibleTasks.filter((task) => task.status === status).length === 0 ? <div className="empty-column">No tasks here</div> : null}</div></div>)}</div>
     </section>
   </div>;
 }
@@ -786,7 +810,15 @@ function PipelineWorkspace({ leads, onAction, onStatusChange, onSelectLead }: { 
   return <div className="content-wrap pipeline-wrap">
     <section className="page-heading">
       <div><div className="eyebrow">Revenue workspace</div><h1>Pipeline</h1><p>See where every conversation stands and choose the next move.</p></div>
-      <div className="heading-actions"><button className="secondary-button" onClick={() => onAction("Pipeline view link copied.")} type="button">↗ Share view</button><button className="primary-button" onClick={() => onSelectLead(leads[0]?.id ?? "")} type="button">＋ Review next lead</button></div>
+      <div className="heading-actions"><button className="secondary-button" onClick={async () => {
+                      try {
+                        const viewUrl = `${window.location.origin}/crm/${localZohoOrg}/tab/Pipeline`;
+                        await navigator.clipboard.writeText(viewUrl);
+                        onAction("Pipeline view link copied.");
+                      } catch {
+                        onAction("Could not copy link. Please copy manually: /crm/" + localZohoOrg + "/tab/Pipeline");
+                      }
+                    }} type="button">↗ Share view</button><button className="primary-button" onClick={() => onSelectLead(leads[0]?.id ?? "")} type="button">＋ Review next lead</button></div>
     </section>
     <section className="pipeline-summary"><div className="pipeline-summary-card"><span>Active opportunities</span><strong>{activeLeads.length}</strong><small>Excludes disqualified records</small></div><div className="pipeline-summary-card"><span>Active conversations</span><strong>{activeConversations}</strong><small>Attempted or contacted</small></div><div className="pipeline-summary-card"><span>Ready for proposal</span><strong>{qualified}</strong><small>Pre-qualified leads</small></div><div className="pipeline-summary-card"><span>Estimated value</span><strong>₹8.4L</strong><small>Based on current fit</small></div></section>
     <section className="pipeline-card">
@@ -810,14 +842,60 @@ function PipelineWorkspace({ leads, onAction, onStatusChange, onSelectLead }: { 
   </div>;
 }
 
-function ReportsWorkspace({ leads, tasks, onAction = () => undefined }: { leads: Lead[]; tasks: Task[]; onAction?: (message: string) => void }) {
+function ReportsWorkspace({ leads, tasks, workspaceId, onAction = () => undefined }: { leads: Lead[]; tasks: Task[]; workspaceId?: string; onAction?: (message: string) => void }) {
   const maxStatusCount = Math.max(...leadStatuses.map((status) => leads.filter((lead) => lead.status === status).length), 1);
   const sourceCounts = leadSources.map((source) => ({ source, count: leads.filter((lead) => lead.source === source).length })).filter((item) => item.count > 0).sort((a, b) => b.count - a.count);
   const completedTasks = tasks.filter((task) => task.status === "Completed").length;
   const openTasks = tasks.length - completedTasks;
 
   return <div className="content-wrap reports-wrap">
-    <section className="page-heading"><div><div className="eyebrow">Operating rhythm</div><h1>Reports</h1><p>See what is moving, what is stuck, and where the next hour should go.</p></div><div className="heading-actions"><button className="secondary-button" onClick={() => window.print()} type="button">⤓ Export report</button><button className="primary-button" onClick={() => onAction("Report saved to the workspace.")} type="button">＋ Save report</button></div></section>
+    <section className="page-heading"><div><div className="eyebrow">Operating rhythm</div><h1>Reports</h1><p>See what is moving, what is stuck, and where the next hour should go.</p></div><div className="heading-actions"><button className="secondary-button" onClick={async () => {
+                      const payload = {
+                        schema: "gallivanter.report",
+                        version: 1,
+                        exportedAt: new Date().toISOString(),
+                        leads,
+                        tasks,
+                        pipelineStages: pipelineStages.map((s) => ({ ...s, count: leads.filter((l) => l.status === s.status).length })),
+                        sourceCounts: leadSources.map((source) => ({ source, count: leads.filter((l) => l.source === source).length })).filter((item) => item.count > 0),
+                      };
+                      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+                      const url = URL.createObjectURL(blob);
+                      const link = document.createElement("a");
+                      link.href = url;
+                      link.download = `gallivanter-report-${new Date().toISOString().slice(0, 10)}.json`;
+                      link.click();
+                      URL.revokeObjectURL(url);
+                      onAction("Report exported.");
+                    }} type="button">⤓ Export report</button><button className="primary-button" onClick={async () => {
+                      if (!workspaceId) { onAction("Workspace not available yet."); return; }
+                      try {
+                        // Persist to D1 via the backend tool endpoint.
+                        const res = await fetch(`/api/w/${encodeURIComponent(workspaceId)}/tools/save_report`, {
+                          method: "POST",
+                          credentials: "same-origin",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            name: `Report saved ${new Date().toLocaleString()}`,
+                            module: "Leads",
+                            groupBy: "source",
+                            metric: "count",
+                          }),
+                        });
+                        const data = await res.json().catch(() => ({}));
+                        if (!res.ok) throw new Error(data.error?.message ?? `HTTP ${res.status}`);
+                        onAction(`Report saved (${data.result?.id ?? "OK"}).`);
+
+                        // Mirror in localStorage for offline resilience.
+                        try {
+                          const saved = JSON.parse(localStorage.getItem("gallivanter.reports") ?? "[]");
+                          saved.push({ id: `report-${Date.now()}`, name: `Report saved ${new Date().toLocaleString()}`, createdAt: new Date().toISOString(), leadCount: leads.length, taskCount: tasks.length });
+                          localStorage.setItem("gallivanter.reports", JSON.stringify(saved.slice(-20)));
+                        } catch { /* ignored */ }
+                      } catch (e) {
+                        onAction(`Save failed: ${e instanceof Error ? e.message : String(e)}`);
+                      }
+                    }} type="button">＋ Save report</button></div></section>
     <section className="report-metric-grid"><div className="report-metric"><span>Lead-to-qualified</span><strong>{leads.length ? Math.round((leads.filter((lead) => lead.status === "Pre-Qualified").length / leads.length) * 100) : 0}%</strong><small>Current workspace conversion</small></div><div className="report-metric"><span>Follow-up completion</span><strong>{tasks.length ? Math.round((completedTasks / tasks.length) * 100) : 0}%</strong><small>{completedTasks} of {tasks.length} tasks complete</small></div><div className="report-metric"><span>Active pipeline</span><strong>{leads.filter((lead) => !["Lost Lead", "Junk Lead", "Not Qualified"].includes(lead.status)).length}</strong><small>Leads still in motion</small></div><div className="report-metric"><span>Open actions</span><strong>{openTasks}</strong><small>Tasks needing attention</small></div></section>
     <section className="report-grid"><article className="report-card"><div className="section-toolbar"><div><strong>Pipeline distribution</strong><span>Records by lifecycle stage</span></div><span className="report-period">Current</span></div><div className="bar-list">{pipelineStages.map((stage) => { const count = leads.filter((lead) => lead.status === stage.status).length; return <div className="bar-row" key={stage.status}><div><span>{stage.label}</span><b>{count}</b></div><div className="bar-track"><span style={{ width: `${Math.max((count / maxStatusCount) * 100, count ? 10 : 0)}%` }} /></div></div>; })}</div></article><article className="report-card"><div className="section-toolbar"><div><strong>Lead sources</strong><span>Where your current records came from</span></div></div><div className="source-list">{sourceCounts.map((item, index) => <div className="source-row" key={item.source}><span className={`source-dot source-${index % 4}`} /><div><strong>{item.source}</strong><small>{Math.round((item.count / Math.max(leads.length, 1)) * 100)}% of leads</small></div><b>{item.count}</b></div>)}{sourceCounts.length === 0 ? <div className="empty-state"><strong>No source data yet</strong></div> : null}</div></article></section>
     <section className="report-card focus-card"><div className="section-toolbar"><div><strong>Recommended focus</strong><span>A simple operating view for the next work block.</span></div><span className="focus-badge">Today</span></div><div className="focus-list"><div><span className="focus-number">01</span><div><strong>Complete the {tasks.filter((task) => task.dueDate === "Today" && task.status !== "Completed").length} due-today task(s)</strong><p>Keep follow-up promises visible before adding more prospects.</p></div></div><div><span className="focus-number">02</span><div><strong>Review {leads.filter((lead) => lead.status === "New" && lead.rating === "Hot").length} hot new lead(s)</strong><p>Use Leads to capture context before the next follow-up.</p></div></div><div><span className="focus-number">03</span><div><strong>Move qualified conversations forward</strong><p>Turn the strongest signals into a proposal or discovery call.</p></div></div></div></section>

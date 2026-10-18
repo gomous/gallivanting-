@@ -17,7 +17,7 @@ export const nowIso = (): string => new Date().toISOString();
  * (so Google redirect URIs and JWT audiences are stable across Worker hosts), falling
  * back to the request's own origin. Only https is accepted. */
 export function publicOrigin(env: Env, url: URL): string {
-  const p = (env.PUBLIC_ORIGIN ?? '').trim().replace(/\$/g, '');
+  const p = (env.PUBLIC_ORIGIN ?? '').trim().replace(/\/+$/, '');
   return p && /^https:\/\//.test(p) ? p : url.origin;
 }
 
