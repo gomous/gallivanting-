@@ -1,0 +1,30 @@
+{
+  "$schema": "../node_modules/wrangler/config-schema.json",
+  "name": "gallivanter",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-15",
+  "compatibility_flags": ["nodejs_compat"],
+  "account_id": "f0a40f67e87b4b3ca50d0680cc4f1ab8",
+  "assets": {
+    "directory": "../deploy-temp2",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api/*", "/mcp", "/mcp/*", "/oauth/*", "/.well-known/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "gallivanter",
+      "database_id": "7db6a35f-b3d4-44f2-845e-fa1648e0398b",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "triggers": { "crons": ["*/5 * * * *"] },
+  "vars": {
+    "PUBLIC_ORIGIN": "https://gallivanter.mousumg911.workers.dev",
+    "AI_BASE_URL": "https://vyceai.com/v1",
+    "AI_MODEL": "deepseek-v4.1",
+    "AI_FALLBACK_MODEL": "agnes-3.0-flash"
+  },
+  "observability": { "enabled": true }
+}
