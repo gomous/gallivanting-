@@ -63,6 +63,11 @@ const uiResources: Record<string, { mimeType: string; assetPath: string; descrip
     assetPath: "widgets/chart-shell.html",
     description: "Generic chart rendering shell for inline visual charts",
   },
+  "ui://gallivanter/echarts-shell": {
+    mimeType: MCP_APP_MIME_TYPE,
+    assetPath: "widgets/echarts-shell.html",
+    description: "Arbitrary ECharts visualizations (sunburst, force graph, tree, sankey, heatmap, …) authored per-request",
+  },
 };
 
 // Maps tool names to UI metadata injected into tools/call results.
@@ -70,6 +75,7 @@ const uiResources: Record<string, { mimeType: string; assetPath: string; descrip
 // knows to fetch the matching ui:// resource and render it in a sandboxed iframe.
 const uiTools: Record<string, { ui: { resourceUri: string } }> = {
   render_visual: { ui: { resourceUri: "ui://gallivanter/chart-shell" } },
+  render_echarts: { ui: { resourceUri: "ui://gallivanter/echarts-shell" } },
   pipeline_summary: { ui: { resourceUri: "ui://gallivanter/pipeline-dashboard" } },
 };
 

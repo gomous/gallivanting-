@@ -302,3 +302,73 @@ defineTool({
     };
   },
 });
+
+/**
+ * render_echarts - arbitrary ECharts visualisation authored by the model.
+ *
+ * render_visual is limited to bar/pie/line/table. This is the escape hatch: the
+ * model supplies any valid ECharts `option` object (sunburst, graph/force, tree,
+ * sankey, heatmap, radar, …) and either fetches CRM records itself (module +
+ * filters) or passes its own `data`. The sandboxed iframe loads ECharts and
+ * renders whatever the option describes, so the chart type is unbounded.
+ *
+ * The option's `data` arrays are the only place record values land; the model
+ * must not fabricate them - it passes real values from a prior search.
+ */
+defineTool({
+  name: "render_echarts",
+  title: "Render any ECharts visualisation",
+  description:
+    "Render ANY chart type via an ECharts option object: sunburst, force-directed graph, tree, treemap, sankey, heatmap, radar, scatter, funnel, chord, line, bar, pie - anything ECharts supports. Use this instead of render_visual whenever the request is for a non-bar/pie/line/table visual or a D3-style custom viz. Supply `echartsOption` (a valid ECharts option). To populate it from live CRM data, either pass `module` (+ optional `filters`) so the server queries and returns the records as `data`, or pass your own `data` array of records you already fetched. Reference the records inside the option via dataset.source or series[].data built from those records. Formatter callbacks may be given as JS function strings.",
+  authority: "read",
+  input: z.object({
+    echartsOption: z.any().describe("A complete ECharts option object (title, series, dataset, etc.). The visualization type is whatever this describes."),
+    module: z.string().optional().describe("Optional CRM module to query for the underlying records (e.g., 'Deals'). Ignored if data is provided."),
+    filters: z.array(filterRule).optional().describe("Optional field filters applied when fetching from module"),
+    data: z.array(z.any()).optional().describe("Optional explicit array of records to visualize (overrides module/fetch). Use records from a prior search_records call."),
+    title: z.string().optional().describe("Short title for the visualization"),
+  }),
+  async run(ctx, { echartsOption, module: mod, filters, data, title }) {
+    if (!echartsOption || typeof echartsOption !== "object") {
+      return { text: JSON.stringify({ error: "echartsOption is required and must be an object." }), empty: true };
+    }
+
+    // Resolve the record set: explicit data wins, else fetch from the module.
+    let records: Record<string, unknown>[] = [];
+    if (Array.isArray(data)) {
+      records = data as Record<string, unknown>[];
+    } else if (mod) {
+      if (!(moduleKeys as string[]).includes(mod)) {
+        return { text: JSON.stringify({ error: `Unknown module: ${mod}` }), empty: true };
+      }
+      try {
+        const result = await searchRecords(ctx, { module: mod as ModuleKey, rules: filters ?? [] });
+        records = result.records as unknown as Record<string, unknown>[];
+      } catch (e) {
+        const err = e instanceof AppError ? e.message : String(e);
+        return { text: JSON.stringify({ error: `Could not query ${mod}: ${err}` }), empty: true };
+      }
+    }
+
+    if (!records.length && !Array.isArray(data)) {
+      return {
+        text: JSON.stringify({ error: `No records found${mod ? ` for ${mod}` : ""}.` }),
+        empty: true,
+      };
+    }
+
+    const payload = {
+      isEcharts: true,
+      title: title ?? "Visualization",
+      echartsOption,
+      data: records,
+    };
+
+    return {
+      text: JSON.stringify(payload),
+      ...payload,
+      summary: `Rendered ${records.length} records as a custom ECharts visualization.`,
+      empty: false,
+    };
+  },
+});

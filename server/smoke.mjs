@@ -216,6 +216,14 @@ console.log("MCP OAuth 2.1 (bearer tokens)");
   try { rvStruct = JSON.parse(rvResult.result.structuredContent.text); } catch { }
   ok(rvResult.result.structuredContent?.spec?.type === "bar", "render_visual returns a chart spec with type", rvResult);
 
+  // render_echarts: arbitrary ECharts viz with _meta.ui.resourceUri + echo of the option
+  const reArgs = { echartsOption: { series: [{ type: "sunburst", data: [{ name: "A", value: 1 }] }] }, data: [{ name: "A", value: 1 }], title: "Sunburst" };
+  const reResult = await (await rpc(bearer, "tools/call", { name: "render_echarts", arguments: reArgs })).json();
+  ok(reResult.result?._meta?.ui?.resourceUri === "ui://gallivanter/echarts-shell", "render_echarts tool call includes _meta.ui.resourceUri", reResult);
+  ok(reResult.result?.structuredContent?.isEcharts === true && reResult.result.structuredContent?.echartsOption?.series?.[0]?.type === "sunburst", "render_echarts echoes the authored echartsOption", reResult.result?.structuredContent);
+  const reResRead = await (await rpc(bearer, "resources/read", { uri: "ui://gallivanter/echarts-shell" })).json();
+  ok(reResRead.result?.contents?.[0]?.text?.includes("echarts"), "resources/read returns the echarts-shell widget bundle", reResRead.result?.contents?.[0]?.mimeType);
+
   // refresh rotation + reuse detection
   const r1 = await (await form("/oauth/token", { grant_type: "refresh_token", refresh_token: t2.refresh_token, client_id: clientId })).json();
   ok(r1.access_token && r1.refresh_token && r1.refresh_token !== t2.refresh_token, "refresh token rotates");

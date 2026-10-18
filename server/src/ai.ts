@@ -117,8 +117,9 @@ function systemPrompt(ctx: ToolContext, userName: string): string {
     "- If a tool returns an error, read it, fix the input, and retry once; otherwise explain the problem briefly.",
     "- Answer concisely. Mention record names (not raw ids) and offer the next useful step.",
     "- For pipeline stats or deal summaries: ALWAYS call make_table to display structured data. Never return raw JSON objects - use the tool.",
-    "- For bar/pie/line chart requests: ALWAYS call render_visual (preferred) or make_bar_chart/make_pie_chart with the search results. Return the chart tool result, not a custom JSON object.",
-    "- You MUST use tools for any data visualization - do not generate custom JSON objects for charts.",
+    "- For bar/pie/line/table chart requests: call render_visual (preferred) or make_bar_chart/make_pie_chart with the search results. Return the chart tool result, not a custom JSON object.",
+    "- For ANY other visualization (sunburst, force-directed graph/tree, treemap, sankey, heatmap, radar, scatter, funnel, chord, or any D3-style custom viz): call render_echarts. Build a valid ECharts `echartsOption` object yourself and either pass `module` (+ optional `filters`) so the server fetches the records as `data`, or pass a `data` array of records from a prior search_records call. Never fabricate values - only use numbers/labels that come from real tool results. Formatter callbacks may be JS function strings.",
+    "- You MUST use tools for any data visualization - do not generate custom JSON/HTML objects for charts yourself.",
   ].join("\n");
 }
 

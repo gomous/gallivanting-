@@ -214,6 +214,91 @@ const CHART_SHELL_HTML = `<!DOCTYPE html>
 </html>`;
 
 
+/** ECharts shell: an iframe that loads ECharts from CDN and renders whatever
+ * option the AI authored (sunburst, force graph, tree, sankey, heatmap, …).
+ * The payload is injected at the /** INJECT_ECHARTS **\/ marker. Mirrors
+ * server/src/widgets/echarts-shell.html for the MCP Apps path. */
+const ECHARTS_SHELL_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: transparent; color: hsl(220, 6%, 13%); padding: 8px; }
+    #chart { width: 100%; height: 100%; min-height: 200px; }
+    .state { padding: 24px; text-align: center; color: hsl(220, 6%, 50%); font-size: 13px; }
+    .state.error { color: #ef4444; }
+    @media (prefers-color-scheme: dark) { body { color: hsl(0, 0% 95%); } }
+  </style>
+</head>
+<body>
+  <div id="chart"><div class="state">Loading…</div></div>
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"><\/script>
+  <script>
+    function reviveFunctions(node) {
+      if (Array.isArray(node)) { node.forEach(reviveFunctions); return node; }
+      if (node && typeof node === 'object') {
+        for (var k of Object.keys(node)) {
+          var v = node[k];
+          if (typeof v === 'string' && /^\\s*(function\\s*[\\w$]*\\s*\\(|\\([^)]*\\)\\s*=>|[\\w$]+\\s*=>)/.test(v)) {
+            try { node[k] = (new Function('return (' + v + ')'))(); } catch (e) { node[k] = v; }
+          } else { reviveFunctions(v); }
+        }
+        return node;
+      }
+      return node;
+    }
+    function renderEcharts(payload) {
+      var host = document.getElementById('chart');
+      if (!payload || payload.error) { host.innerHTML = '<div class="state error">' + ((payload && payload.error) || 'No data to display') + '</div>'; return; }
+      if (typeof echarts === 'undefined') { host.innerHTML = '<div class="state error">ECharts failed to load</div>'; return; }
+      var option = payload.echartsOption || payload.option || payload;
+      if (payload.data && option && typeof option === 'object' && !option.dataset) option.dataset = [{ source: payload.data }];
+      try {
+        option = reviveFunctions(option);
+        var chart = echarts.init(host, null, { renderer: 'svg' });
+        chart.setOption(option);
+        new ResizeObserver(function () { chart.resize(); }).observe(host);
+      } catch (e) {
+        host.innerHTML = '<div class="state error">Render error: ' + (e && e.message ? e.message : String(e)) + '</div>';
+      }
+    }
+    /** INJECT_ECHARTS **/
+  <\/script>
+</body>
+</html>`;
+
+/** Embed the ECharts iframe with the AI-authored payload injected inline. */
+function EchartsIframe({ payload }: { payload: any }) {
+  const fullHtml = ECHARTS_SHELL_HTML.replace(
+    '/** INJECT_ECHARTS **/',
+    `var __payload = ${JSON.stringify(payload)}; window.addEventListener('load', function(){ setTimeout(function(){ renderEcharts(__payload); }, 60); });`,
+  );
+  return (
+    <div className="aui-chart-iframe-wrapper aui-echarts-wrapper">
+      <iframe
+        srcDoc={fullHtml}
+        title={payload?.title || "ECharts visualization"}
+        className="aui-chart-iframe"
+        sandbox="allow-scripts"
+      />
+    </div>
+  );
+}
+
+/** Detect an ECharts payload in a parsed tool-result / content object. */
+function detectEcharts(obj: any): any | null {
+  if (!obj || typeof obj !== 'object') return null;
+  if (obj.isEcharts && obj.echartsOption) return obj;
+  // render_echarts wraps its payload in a `text` JSON string too.
+  if (typeof obj.text === 'string' && obj.text.includes('"isEcharts"')) {
+    try { const inner = JSON.parse(obj.text); if (inner.isEcharts && inner.echartsOption) return inner; } catch { }
+  }
+  return null;
+}
+
 function describe(args: unknown): string {
   if (!args || typeof args !== "object") return String(args ?? "");
   const a = args as Record<string, unknown>;
@@ -387,6 +472,14 @@ function ChartIframe({ spec, error }: { spec?: any; error?: string }) {
 
 /** Inline result card for tool results. */
 function ToolResultCard({ content }: { content: string }) {
+  // ECharts payload (render_echarts): arbitrary chart type authored by the AI.
+  if (content.includes('"isEcharts"')) {
+    let wrapper: unknown;
+    try { wrapper = JSON.parse(content); } catch { }
+    const payload = detectEcharts(wrapper);
+    if (payload) return <EchartsIframe payload={payload} />;
+  }
+
   // Check if this is a render_visual result with spec field
   if (content.includes('"spec"')) {
     let wrapper: unknown;

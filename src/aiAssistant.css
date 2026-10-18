@@ -224,6 +224,12 @@
   display: block;
 }
 
+/* ECharts (arbitrary visualizations) get a larger canvas */
+.aui-echarts-wrapper {
+  max-width: 460px;
+  height: 360px;
+}
+
 .aui-chart-loading {
   padding: 24px;
   text-align: center;
