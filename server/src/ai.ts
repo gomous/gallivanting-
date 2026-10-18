@@ -23,6 +23,9 @@ export interface AiEnv extends Env {
 
 const DEFAULT_BASE = "https://vyceai.com/v1";
 const MAX_STEPS = 10;
+
+// Visualization helper tools (make_bar_chart, make_pie_chart, make_table)
+// are defined in src/tools/viz.ts and registered via defineTool.
 const HIDDEN_FROM_AI = new Set(["changes_since", "resolve_titles"]);
 
 // ---------------- key pool ----------------
@@ -113,6 +116,7 @@ function systemPrompt(ctx: ToolContext, userName: string): string {
     "- Changes (create/update/delete) are shown to the user for approval before they run. Propose them directly; do not ask for permission in text first.",
     "- If a tool returns an error, read it, fix the input, and retry once; otherwise explain the problem briefly.",
     "- Answer concisely. Mention record names (not raw ids) and offer the next useful step.",
+    "- For visualization requests: after getting data, call make_bar_chart, make_pie_chart, or make_table to format it for rendering. Always use these tools when user asks for charts, tables, or visual summaries.",
   ].join("\n");
 }
 
