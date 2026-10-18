@@ -29,6 +29,7 @@ import "./tools/activities.ts";
 import "./tools/sales.ts";
 import "./tools/insight.ts";
 import "./tools/workspace.ts";
+import "./tools/viz.ts";
 
 // ---------------- JSON-RPC 2.0 types ----------------
 
@@ -44,6 +45,27 @@ interface JsonRpcResponse {
   result?: unknown;
   error?: { code: number; message: string; data?: unknown };
 }
+
+// MCP Apps extension identifiers
+const EXTENSION_ID = "io.modelcontextprotocol/ui";
+const UI_RESOURCE_PREFIX = "ui://gallivanter/";
+const MCP_APP_MIME_TYPE = "text/html;profile=mcp-app";
+
+// Known UI resources and their static asset paths
+const uiResources: Record<string, { mimeType: string; assetPath: string; description: string }> = {
+  "ui://gallivanter/pipeline-dashboard": {
+    mimeType: MCP_APP_MIME_TYPE,
+    assetPath: "widgets/pipeline-dashboard.html",
+    description: "Interactive pipeline dashboard with bar charts of deals by stage",
+  },
+};
+
+// Maps tool names to UI metadata injected into tools/call results.
+// When a tool appears here, its result carries _meta.ui.resourceUri so the client
+// knows to fetch the matching ui:// resource and render it in a sandboxed iframe.
+const uiTools: Record<string, { ui: { resourceUri: string } }> = {
+  pipeline_summary: { ui: { resourceUri: "ui://gallivanter/pipeline-dashboard" } },
+};
 
 // MCP protocol version we speak. Clients may offer their own; we accept anything
 // but report ours so the client can adapt.
@@ -143,7 +165,11 @@ async function handleMethod(ctx: ToolContext, req: JsonRpcRequest): Promise<Json
     case "initialize": {
       return rpcSuccess(id, {
         protocolVersion: PROTOCOL_VERSION,
-        capabilities: { tools: { listChanged: true } },
+        capabilities: {
+          tools: { listChanged: true },
+          resources: { listChanged: true },
+          extensions: { [EXTENSION_ID]: { mimeTypes: [MCP_APP_MIME_TYPE] } },
+        },
         serverInfo: { name: SERVER_NAME, version: SERVER_VERSION },
         instructions:
           "Gallivanter CRM over MCP. Use the tools in this registry to read and manage leads, contacts, accounts, deals, tasks, meetings, calls, products, quotes, sales orders, invoices, vendors, cases, and solutions. Call list_modules and describe_module first if you are unsure which module or field to use. Lookups take record ids.",
@@ -168,12 +194,16 @@ async function handleMethod(ctx: ToolContext, req: JsonRpcRequest): Promise<Json
       if (!p.name) return rpcError(id, ERROR.InvalidParams, "tools/call requires a `name` field.");
       try {
         const result = await invokeTool(ctx, p.name, p.arguments ?? {});
-        return rpcSuccess(id, {
+        // Inject UI metadata for tools that declare a UI resource
+        const uiMeta = uiTools[p.name];
+        const response: Record<string, unknown> = {
           content: [{ type: "text", text: typeof result === "string" ? result : JSON.stringify(result) }],
           // MCP requires structuredContent to be a JSON object; arrays/strings travel in `content` only.
           ...(result !== null && typeof result === "object" && !Array.isArray(result) ? { structuredContent: result } : {}),
           isError: false,
-        });
+          ...(uiMeta ? { _meta: uiMeta } : {}),
+        };
+        return rpcSuccess(id, response);
       } catch (e) {
         const appErr = e instanceof AppError ? e : null;
         const text = appErr?.message ?? (e instanceof Error ? e.message : String(e));
@@ -183,6 +213,40 @@ async function handleMethod(ctx: ToolContext, req: JsonRpcRequest): Promise<Json
         };
         return rpcSuccess(id, { ...payload, isError: true });
       }
+    }
+
+    case "resources/list": {
+      const resources = Object.entries(uiResources).map(([uri, meta]) => ({
+        uri,
+        name: meta.description,
+        mimeType: meta.mimeType,
+        _meta: { ui: { resourceUri: uri } },
+      }));
+      return rpcSuccess(id, { resources });
+    }
+
+    case "resources/read": {
+      const p = (params ?? {}) as { uri?: string };
+      const uri = p.uri;
+      if (!uri || !uri.startsWith(UI_RESOURCE_PREFIX)) {
+        return rpcError(id, ERROR.ResourceNotFound, `Resource not found: ${uri ?? "(missing uri)"}`);
+      }
+      const meta = uiResources[uri];
+      if (!meta) {
+        return rpcError(id, ERROR.ResourceNotFound, `Resource not found: ${uri}`);
+      }
+      // Serve the static HTML bundle from ASSETS
+      const assetResp = await ctx.env.ASSETS.fetch(new Request(`https://assets/${meta.assetPath}`));
+      if (!assetResp.ok) {
+        return rpcError(id, ERROR.ResourceNotFound, `Resource not found: ${uri}`);
+      }
+      const html = await assetResp.text();
+      return rpcSuccess(id, {
+        contents: [
+          { uri, mimeType: meta.mimeType, text: html },
+        ],
+        _meta: { ui: { resourceUri: uri } },
+      });
     }
 
     default:

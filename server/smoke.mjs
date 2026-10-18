@@ -121,7 +121,7 @@ console.log("MCP OAuth 2.1 (bearer tokens)");
   const manual = { redirect: "manual" };
   const post = (path, body, headers = {}) => fetch(`${BASE}${path}`, { method: "POST", headers: { "Content-Type": "application/json", ...headers }, body: JSON.stringify(body) });
   const form = (path, fields, headers = {}) => fetch(`${BASE}${path}`, { method: "POST", ...manual, headers: { "Content-Type": "application/x-www-form-urlencoded", ...headers }, body: new URLSearchParams(fields) });
-  const rpc = (headers, method = "tools/list") => fetch(`${BASE}/mcp`, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", ...headers }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params: {} }) });
+  const rpc = (headers, method = "tools/list", params = {}) => fetch(`${BASE}/mcp`, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json", ...headers }, body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }) });
   const pkce = async () => { const verifier = b64u(webcrypto.getRandomValues(new Uint8Array(32))); return { verifier, challenge: b64u(await webcrypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier))) }; };
   const authUrl = (clientId, challenge, extra = {}) => `${BASE}/oauth/authorize?` + new URLSearchParams({ response_type: "code", client_id: clientId, redirect_uri: redirect, state: "st123", code_challenge: challenge, code_challenge_method: "S256", ...extra });
 
@@ -199,6 +199,15 @@ console.log("MCP OAuth 2.1 (bearer tokens)");
   ok(bearerWinsOverCookie.status === 401, "a bad bearer does not fall back to the cookie");
   const viaCookie = await (await rpc({ Cookie: cookie })).json();
   ok(Array.isArray(viaCookie.result?.tools), "session-cookie auth still works for the web UI");
+
+  // MCP Apps: extensions capability + resources (ui://)
+  ok(init.result?.capabilities?.extensions?.["io.modelcontextprotocol/ui"] !== undefined, "initialize advertises MCP Apps extension", init);
+  const resList = await (await rpc(bearer, "resources/list")).json();
+  ok(resList.result?.resources?.length > 0 && resList.result.resources[0].uri === "ui://gallivanter/pipeline-dashboard", "resources/list returns pipeline-dashboard ui resource", resList);
+  const resRead = await (await rpc(bearer, "resources/read", { uri: "ui://gallivanter/pipeline-dashboard" })).json();
+  ok(resRead.result?.contents?.[0]?.mimeType === "text/html;profile=mcp-app" && resRead.result.contents[0].text.includes("Pipeline Dashboard"), "resources/read returns HTML widget bundle", resRead.result?.contents?.[0]?.mimeType);
+  const pipeResult = await (await rpc(bearer, "tools/call", { name: "pipeline_summary", arguments: {} })).json();
+  ok(pipeResult.result?._meta?.ui?.resourceUri === "ui://gallivanter/pipeline-dashboard", "pipeline_summary tool call includes _meta.ui.resourceUri", pipeResult);
 
   // refresh rotation + reuse detection
   const r1 = await (await form("/oauth/token", { grant_type: "refresh_token", refresh_token: t2.refresh_token, client_id: clientId })).json();

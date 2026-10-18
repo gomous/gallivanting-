@@ -13,6 +13,7 @@ import "./tools/activities.ts";
 import "./tools/sales.ts";
 import "./tools/insight.ts";
 import "./tools/workspace.ts";
+import "./tools/viz.ts";
 
 type Vars = { user: SessionUser };
 type App = { Bindings: Env & { DEV_LOGIN?: string }; Variables: Vars };
