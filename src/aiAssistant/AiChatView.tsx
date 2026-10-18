@@ -15,41 +15,60 @@ function describe(args: unknown): string {
   return parts.join(" · ");
 }
 
+/** Check if content is a pipeline stats object and convert to chart */
+function isPipelineStats(obj: any): boolean {
+  return obj && typeof obj === 'object' && obj.stages && Array.isArray(obj.stages) && obj.openDeals !== undefined;
+}
+
+/** Render pipeline stats as a bar chart */
+function PipelineChart({ data }: { data: any }) {
+  const stages = data.stages || [];
+  const labels = stages.map((s: any) => s.stage || 'Other');
+  const values = stages.map((s: any) => s.amount || 0);
+  const maxVal = Math.max(...values, 1);
+
+  return (
+    <div className="ai-chart ai-pipeline-chart">
+      <div className="ai-chart-title">{data.title || 'Pipeline by Stage'}</div>
+      <div className="ai-chart-body">
+        {labels.map((label: string, i: number) => (
+          <div key={i} className="ai-chart-row">
+            <span className="ai-chart-label">{label}</span>
+            <div className="ai-chart-bar-container">
+              <div className="ai-chart-bar" style={{ width: `${values[i] / maxVal * 100}%` }} />
+            </div>
+            <span className="ai-chart-value">${values[i].toLocaleString()}</span>
+          </div>
+        ))}
+      </div>
+      {data.openDeals !== undefined && (
+        <div className="ai-chart-summary">
+          <span className="ai-chart-summary-label">Total Deals:</span>
+          <span className="ai-chart-summary-value">{data.openDeals}</span>
+          <span className="ai-chart-summary-label">Total Value:</span>
+          <span className="ai-chart-summary-value">${data.openAmount?.toLocaleString() || 0}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /** Check if content is a chart config and render it. */
 function ChartFromTool({ content }: { content: string }) {
   let parsed: unknown;
   try { parsed = JSON.parse(content); } catch { return null; }
-  if (parsed && typeof parsed === 'object' && (parsed as any).type === 'bar' || (parsed as any).type === 'pie' || (parsed as any).type === 'table') {
-    return <ChartRenderer config={parsed as Record<string, unknown>} />;
-  }
-  return null;
-}
-
-/** Inline result card for tool results. */
-function ToolResultCard({ content }: { content: string }) {
-  // Check if this is a chart/table tool result with html field
-  if (content.includes('"html"')) {
-    let wrapper: unknown;
-    try { wrapper = JSON.parse(content); } catch { }
-    if (wrapper && typeof wrapper === 'object' && (wrapper as any).html) {
-      const htmlContent = (wrapper as any).html as string;
-      const chart = ChartFromTool({ content: htmlContent });
-      if (chart) return chart;
+  if (parsed && typeof parsed === 'object') {
+    const obj = parsed as any;
+    // Check for chart type
+    if (obj.type === 'bar' || obj.type === 'pie' || obj.type === 'table') {
+      return <ChartRenderer config={obj} />;
+    }
+    // Check for pipeline stats (convert to chart)
+    if (isPipelineStats(obj)) {
+      return <PipelineChart data={obj} />;
     }
   }
-
-  let parsed: unknown;
-  try { parsed = JSON.parse(content); } catch { parsed = null; }
-  const isRecord = Array.isArray(parsed) || (parsed !== null && typeof parsed === 'object');
-  return (
-    <div className="ai-tool-result">
-      {isRecord ? (
-        <pre className="ai-tool-pre">{JSON.stringify(parsed, null, 2)}</pre>
-      ) : (
-        <span className="ai-tool-text">{content}</span>
-      )}
-    </div>
-  );
+  return null;
 }
 
 /** Render bar/pie chart using simple CSS. */
@@ -61,7 +80,7 @@ function ChartRenderer({ config }: { config: Record<string, unknown> }) {
   const values = datasets[0]?.data ?? [];
   const color = ((config.options as any)?.color) ?? CHART_COLORS[0];
 
-  if (!labels.length || !values.length) {
+  if (!labels.length && !values.length) {
     return <div className="ai-error">No data for chart</div>;
   }
 
@@ -77,38 +96,64 @@ function ChartRenderer({ config }: { config: Record<string, unknown> }) {
       }));
 
   return (
-    <div className="ai-chart" style={{ border: '1px solid #e3e6ee', borderRadius: '8px', padding: '12px', background: '#fff' }}>
-      <div style={{ fontSize: '14px', fontWeight: 600, marginBottom: '8px', color: '#374151' }}>
-        {title}
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+    <div className="ai-chart">
+      <div className="ai-chart-title">{title}</div>
+      <div className="ai-chart-body">
         {rows.map((r: any, i: number) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div key={i} className="ai-chart-row">
             {type === 'pie' ? (
               <>
-                <span style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: `hsl(${i * 45 % 360}, 70%, 50%)` }} />
-                <span style={{ width: 60, fontSize: '11px', color: '#6b7385' }}>{r.label}</span>
-                <span style={{ flex: 1, fontSize: '11px', color: '#374151' }}>{r.value.toLocaleString()}</span>
+                <span className="ai-chart-pie-dot" style={{ backgroundColor: `hsl(${i * 45 % 360}, 70%, 50%)` }} />
+                <span className="ai-chart-label">{r.label}</span>
+                <span className="ai-chart-value">{r.value.toLocaleString()}</span>
               </>
             ) : (
               <>
-                <span style={{ width: 80, fontSize: '11px', textAlign: 'right', color: '#6b7385', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                  {r.label}
-                </span>
-                <div style={{ flex: 1, height: 20, background: '#f3f4f6', borderRadius: '4px', overflow: 'hidden' }}>
-                  <div style={{
+                <span className="ai-chart-label">{r.label}</span>
+                <div className="ai-chart-bar-container">
+                  <div className="ai-chart-bar" style={{
                     width: `${r.value / maxVal * 100}%`,
-                    height: '100%',
-                    background: color,
-                    transition: 'width 0.3s'
+                    backgroundColor: color
                   }} />
                 </div>
-                <span style={{ width: 50, fontSize: '11px', textAlign: 'left', color: '#374151' }}>{r.value.toLocaleString()}</span>
+                <span className="ai-chart-value">{r.value.toLocaleString()}</span>
               </>
             )}
           </div>
         ))}
       </div>
+    </div>
+  );
+}
+
+/** Inline result card for tool results. */
+function ToolResultCard({ content }: { content: string }) {
+  // Check if this is a chart/table tool result with html field
+  if (content.includes('"html"')) {
+    let wrapper: unknown;
+    try { wrapper = JSON.parse(content); } catch { }
+    if (wrapper && typeof wrapper === 'object' && (wrapper as any).html) {
+      const htmlContent = (wrapper as any).html as string;
+      const chart = ChartFromTool({ content: htmlContent });
+      if (chart) return chart;
+    }
+  }
+
+  // Check if this is a pipeline stats object (convert to chart)
+  let parsed: unknown;
+  try { parsed = JSON.parse(content); } catch { parsed = null; }
+  if (parsed && isPipelineStats(parsed)) {
+    return <PipelineChart data={parsed as any} />;
+  }
+
+  const isRecord = Array.isArray(parsed) || (parsed !== null && typeof parsed === 'object');
+  return (
+    <div className="ai-tool-result">
+      {isRecord ? (
+        <pre className="ai-tool-pre">{JSON.stringify(parsed, null, 2)}</pre>
+      ) : (
+        <span className="ai-tool-text">{content}</span>
+      )}
     </div>
   );
 }

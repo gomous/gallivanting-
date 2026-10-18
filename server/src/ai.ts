@@ -116,7 +116,9 @@ function systemPrompt(ctx: ToolContext, userName: string): string {
     "- Changes (create/update/delete) are shown to the user for approval before they run. Propose them directly; do not ask for permission in text first.",
     "- If a tool returns an error, read it, fix the input, and retry once; otherwise explain the problem briefly.",
     "- Answer concisely. Mention record names (not raw ids) and offer the next useful step.",
-    "- For visualization requests: after getting data, call make_bar_chart, make_pie_chart, or make_table to format it for rendering. Always use these tools when user asks for charts, tables, or visual summaries.",
+    "- For pipeline stats or deal summaries: ALWAYS call make_table to display structured data. Never return raw JSON objects - use the tool.",
+    "- For bar/pie chart requests: ALWAYS call make_bar_chart or make_pie_chart with the search results. Return the chart tool result, not a custom JSON object.",
+    "- You MUST use tools for any data visualization - do not generate custom JSON objects for charts.",
   ].join("\n");
 }
 

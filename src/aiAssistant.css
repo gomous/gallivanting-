@@ -38,3 +38,17 @@
 .ai-embed { margin: 12px 0; border: 1px solid #e3e6ee; border-radius: 8px; overflow: hidden; background: #fff; }
 .ai-embed-frame { width: 100%; height: 300px; border: none; }
 .ai-embed-loading { padding: 40px; text-align: center; color: #6b7385; }
+
+/* Pipeline and chart styling */
+.ai-chart { border: 1px solid #e3e6ee; border-radius: 8px; padding: 12px; background: #fff; margin: 8px 0; }
+.ai-chart-title { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 12px; }
+.ai-chart-body { display: flex; flex-direction: column; gap: 8px; }
+.ai-chart-row { display: flex; align-items: center; gap: 8px; }
+.ai-chart-label { width: 90px; font-size: 12px; color: #6b7385; flex-shrink: 0; }
+.ai-chart-bar-container { flex: 1; height: 20px; background: #f3f4f6; border-radius: 4px; overflow: hidden; }
+.ai-chart-bar { height: 100%; background: #3b82f6; transition: width 0.3s; }
+.ai-chart-value { width: 60px; font-size: 12px; color: #374151; flex-shrink: 0; text-align: right; }
+.ai-chart-pie-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.ai-chart-summary { display: flex; justify-content: space-around; padding-top: 8px; margin-top: 4px; border-top: 1px solid #f3f4f6; }
+.ai-chart-summary-label { font-size: 12px; color: #6b7385; }
+.ai-chart-summary-value { font-size: 14px; font-weight: 500; color: #111827; margin: 0 12px; }
