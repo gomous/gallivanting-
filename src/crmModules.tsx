@@ -421,7 +421,25 @@ export function CrmModuleWorkspace({ moduleKey, initialMode = "list", initialRec
             { name: "Export records", handler: () => { const payload = { schema: "gallivanter.module", version: 1, exportedAt: new Date().toISOString(), module: moduleKey, records: visibleRecords }; const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" }); const url = URL.createObjectURL(blob); const link = document.createElement("a"); link.href = url; link.download = `${moduleKey}-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); setNotice(`${config.label} exported.`); } },
             { name: "Import records", handler: () => { importInputRef?.current?.click(); } },
             { name: "Print view", handler: () => { window.print(); setNotice(`${config.label} print view opened.`); } },
-          ] : ["Mass update", "Mass delete", "Send email"]).map((item) => typeof item === "string" ? <button key={item} onClick={() => { setMenuOpen(null); setNotice(`Action "${item}" is ready for ${config.label}.`); }} role="menuitem" type="button">{item}</button> : <button key={item.name} onClick={() => { item.handler(); setMenuOpen(null); }} role="menuitem" type="button">{item.name}</button>)}</div> : null}
+          ] : [
+            { name: "Mass update", handler: () => { setMenuOpen(null); if (selectedIds.length > 0) { setNotice(`Mass update: selected ${selectedIds.length} ${config.label.slice(0, -1) ?? config.label}(s).`); } else { setNotice("Select records first to use mass update."); } } },
+            { name: "Mass delete", handler: () => {
+              setMenuOpen(null);
+              if (!selectedIds.length) { setNotice("Select records first to use mass delete."); return; }
+              if (confirm(`Delete ${selectedIds.length} ${config.label.slice(0, -1) ?? config.label}(s)? This cannot be undone.`)) {
+                const next = records.filter((item) => !selectedIds.includes(item.id));
+                if (commitRecords(next)) { setNotice(`Deleted ${selectedIds.length} ${config.label.slice(0, -1) ?? config.label}(s).`); setSelectedIds([]); }
+              }
+            } },
+            { name: "Send email", handler: () => {
+              setMenuOpen(null);
+              if (selectedIds.length > 0) {
+                const selected = records.filter((item) => selectedIds.includes(item.id));
+                const emails = selected.map((r) => r.values.email).filter(Boolean).join(",");
+                if (emails) { window.open(`mailto:${emails}`, "_blank"); } else { setNotice("Selected records have no email addresses."); }
+              } else { setNotice("Select records first to send email."); }
+            } },
+          ]).map((item) => typeof item === "string" ? <button key={item} onClick={() => { setMenuOpen(null); setNotice(`Action "${item}" is ready for ${config.label}.`); }} role="menuitem" type="button">{item}</button> : <button key={item.name} onClick={() => { item.handler(); setMenuOpen(null); }} role="menuitem" type="button">{item.name}</button>)}</div> : null}
       {filterOpen ? <div className="crm-filter-panel"><div className="crm-filter-header"><div><strong>Filter {config.label}</strong><span>Choose the signals that should remain in this custom view.</span></div><button className="text-button" onClick={() => setActiveFilters([])} type="button">Reset filters</button></div><div className="crm-filter-builder"><div className="crm-filter-tabs">{config.filters.map((group, index) => <button className={filterGroup === index ? "active" : ""} key={group.label} onClick={() => setFilterGroup(index)} type="button">{group.label}<small>{activeFilters.filter((item) => group.options.includes(item)).length || "All"}</small></button>)}</div><div className="crm-filter-options">{config.filters[filterGroup]?.options.map((option) => <label className="check-option" key={option}><input checked={activeFilters.includes(option)} onChange={() => toggleFilter(option)} type="checkbox" /><span><strong>{option}</strong><small>Include records matching this signal</small></span></label>)}</div></div></div> : null}
         <div className="crm-module-body">{config.view === "kanban" ? <ModuleKanban config={config} records={visibleRecords} onSelect={selectRecord} onEdit={openEdit} /> : <ModuleTable config={config} records={visibleRecords} selectedId={selected?.id ?? ""} selectedIds={selectedIds} showDeleted={showDeleted} onSelect={selectRecord} onRestore={restoreRecord} onToggleSelect={toggleSelected} onToggleSelectAll={toggleAllSelected} onRowAction={(message) => setNotice(message)} />}{visibleRecords.length === 0 ? <div className="empty-state"><div className="empty-icon">⌕</div><strong>No {config.label.toLowerCase()} found</strong><span>Try changing the filters or create the first record.</span><button className="text-button" onClick={openCreate} type="button">Create the first record</button></div> : null}</div>
       <div className="crm-pagination"><span>Total Records {visibleRecords.length}</span><span>1 to {visibleRecords.length}</span><button disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)} type="button">Previous</button><button disabled={currentPage >= Math.ceil(visibleRecords.length / 50)} onClick={() => setPage(currentPage + 1)} type="button">Next</button></div>
